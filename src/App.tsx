@@ -140,7 +140,6 @@ export default function App() {
     const updated = [...categories, newCategory];
     setCategories(updated);
     localStorage.setItem("stash_categories", JSON.stringify(updated));
-    setActiveCategory(newCategory.id);
   }, [categories]);
 
   const currentThemeMode = folderThemes["global"] || folderThemes["all"] || "ios-dark";
