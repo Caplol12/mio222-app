@@ -90,6 +90,7 @@ export default function DraggableDashboard({
   const [editUrl, setEditUrl] = useState('');
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [quickAddInput, setQuickAddInput] = useState<string | null>(null);
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -413,10 +414,14 @@ export default function DraggableDashboard({
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  onTriggerAddModal?.();
+                  if (quickAddInput === cat.id) {
+                    setQuickAddInput(null);
+                  } else {
+                    setQuickAddInput(cat.id);
+                  }
                 }} 
                 className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors"
-                title="افزودن بوکمارک"
+                title="افزودن سریع بوکمارک"
               >
                 <Plus className="w-4 h-4 text-slate-600 dark:text-slate-300" />
               </button>
@@ -479,6 +484,43 @@ export default function DraggableDashboard({
               )}
             </div>
           </div>
+          {quickAddInput === cat.id && (
+            <div className="mb-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-1 p-1 bg-black/5 dark:bg-white/10 rounded-lg">
+                <input
+                  autoFocus
+                  placeholder="https://example.com"
+                  className="flex-1 bg-transparent border-none outline-none text-xs px-2 py-1 text-slate-700 dark:text-slate-200"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                      let url = e.currentTarget.value.trim();
+                      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+                      if (onDropLinks) onDropLinks([url], cat.id);
+                      setQuickAddInput(null);
+                    } else if (e.key === "Escape") {
+                      setQuickAddInput(null);
+                    }
+                  }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const input = (e.currentTarget.parentElement?.querySelector("input") as HTMLInputElement)?.value;
+                    if (input?.trim()) {
+                      let url = input.trim();
+                      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+                      if (onDropLinks) onDropLinks([url], cat.id);
+                      setQuickAddInput(null);
+                    }
+                  }}
+                  className="p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-md transition-colors"
+                  title="ذخیره"
+                >
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </button>
+              </div>
+            </div>
+          )}
           <div className="flex flex-col gap-0.5">
             {catBookmarks.map(bm => (
               <div key={bm.id} className="relative group/bm flex items-center justify-between px-1 sm:px-2 py-1 min-w-0 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/5 transition-colors w-full" dir="ltr">
