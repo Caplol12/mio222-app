@@ -289,7 +289,7 @@ export default function AddBookmarkModal({
                   {category}
                 </span>
                 <p className="text-xs opacity-60 mt-1.5 font-medium line-clamp-1">
-                  {description || "وب‌سایت ثبت شده در آرشیو بوکمارک."}
+                  {description || ""}
                 </p>
               </div>
             </div>
