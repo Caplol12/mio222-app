@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "id": "yg7ulx1os",
+      "name": "m",
+      "email": "montill22k@gmail.com",
+      "password": "$2b$10$4V2akalHIJD9.wFu9xSeeuuPnLhvi4Y/Y4b14p01fTlUtJ/.7HkJq",
+      "picture": "",
+      "provider": "local",
+      "createdAt": "2026-07-23T10:28:22.223Z"
+    },
+    {
+      "id": "ahuhwocpg",
+      "name": "Test",
+      "email": "test@test.com",
+      "password": "$2b$10$3QEbzCmrNk6PpPA3sh8Dq.bp6zt9bSqVrj/2k6nkv17n12eXNkFeu",
+      "picture": "",
+      "provider": "local",
+      "createdAt": "2026-07-23T10:37:22.028Z"
+    }
+  ]
+}

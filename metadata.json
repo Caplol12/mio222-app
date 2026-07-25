@@ -1,0 +1,6 @@
+{
+  "name": "Bookmarks Manager",
+  "description": "An elegant, minimalist bookmark manager inspired by iOS design with squircle icons, automatic site logo extraction, adaptive light/dark UI modes, and category organization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
