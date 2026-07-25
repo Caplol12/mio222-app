@@ -359,16 +359,6 @@ export default function DraggableDashboard({
               }
             }
           }}
-          onPaste={(e) => {
-            const data = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text/html');
-            if (data && onDropLinks) {
-              const urls = extractUrlsFromText(data);
-              if (urls.length > 0) {
-                e.preventDefault();
-                onDropLinks(urls, cat.id);
-              }
-            }
-          }}
         >
           <div 
             {...dragProps?.attributes} 
