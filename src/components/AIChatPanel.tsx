@@ -152,7 +152,8 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
 
           if (!response.ok) {
             // 429, 403 or server errors
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
           }
 
           const data = await response.json();
@@ -174,11 +175,11 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
       }
 
       // Move to next key
-      index = (index + 1) % apiKeys.length;
+      index = (index + 1) % currentApiKeys.length;
       attempts++;
     }
 
-    throw new Error('All keys are in cooldown or failed.');
+    throw new Error('تمام کلیدها با خطا مواجه شدند یا در حالت انتظار هستند (۶۰ ثانیه صبر کنید). لطفاً از سالم بودن کلیدهای API اطمینان حاصل کنید.');
   };
 
   const handleSend = async () => {
