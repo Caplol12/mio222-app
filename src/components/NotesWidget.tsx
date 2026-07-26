@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
 
 interface Note {
@@ -32,6 +32,18 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
   const [isAdding, setIsAdding] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [widgetTitle, setWidgetTitle] = useState(() => {
+    try {
+      return localStorage.getItem('stash_notes_widget_title') || 'یادداشت‌ها';
+    } catch {
+      return 'یادداشت‌ها';
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('stash_notes_widget_title', widgetTitle);
+  }, [widgetTitle]);
 
   useEffect(() => {
     localStorage.setItem('stash_notes_data', JSON.stringify(notes));
@@ -61,9 +73,53 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
       <div 
         {...dragProps?.attributes}
         {...dragProps?.listeners}
-        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3"
+        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative"
       >
-        <h3 className="font-medium text-[16px] text-slate-800 dark:text-white font-sans">یادداشت‌ها</h3>
+        <h3 className="font-medium text-[16px] text-slate-800 dark:text-white font-sans">{widgetTitle}</h3>
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+          >
+            <MoreHorizontal className="w-5 h-5" />
+          </button>
+          {menuOpen && (
+            <div
+              onClick={e => e.stopPropagation()}
+              className="absolute left-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]"
+              dir="rtl"
+            >
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  const newName = window.prompt("نام جدید ویجت را وارد کنید:", widgetTitle);
+                  if (newName && newName.trim() !== "") {
+                    setWidgetTitle(newName.trim());
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
+              >
+                <Edit2 className="w-4 h-4 text-slate-400" />
+                تغییر نام ویجت
+              </button>
+              {onRemove && (
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRemove();
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500/70" />
+                  حذف ویجت
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
       {/* List Items */}
