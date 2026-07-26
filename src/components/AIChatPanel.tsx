@@ -158,8 +158,8 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    if (apiKeys.length === 0) {
-      setMessages(prev => [...prev, { role: 'model', content: 'لطفاً ابتدا از بخش تنظیمات کلید API را وارد کنید.' }]);
+    if (!userApiKey) {
+      setMessages(prev => [...prev, { role: 'model', content: 'لطفاً ابتدا از طریق آیکون ⚙️ کلید API شخصی خود را وارد کنید.' }]);
       return;
     }
 
@@ -177,13 +177,9 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
       setMessages(prev => [...prev, { role: 'model', content: reply }]);
     } catch (error: any) {
       console.error('Error generating response:', error);
-      let errorMsg = 'متاسفانه خطایی رخ داد. لطفا دوباره تلاش کنید.';
-      if (error.message.includes('No API keys')) {
-        errorMsg = 'لطفاً کلید API را وارد کنید.';
-      } else if (error.message.includes('All keys')) {
-        errorMsg = 'تمام کلیدها با خطا مواجه شدند یا در حالت انتظار هستند (۶۰ ثانیه صبر کنید).';
-      }
-      setMessages(prev => [...prev, { role: 'model', content: errorMsg }]);
+      // Directly show the error message returned from callGeminiApi since it's already localized and specific
+      const errorMsg = error.message || 'خطای ناشناخته‌ای رخ داد.';
+      setMessages(prev => [...prev, { role: 'model', content: `خطا: ${errorMsg}` }]);
     } finally {
       setIsLoading(false);
     }
