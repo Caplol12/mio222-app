@@ -8,7 +8,6 @@ import { useGlassStyle } from '../contexts/SettingsContext';
 // Types
 interface User {
   id: string;
-  numericId?: number;
   name: string;
   email: string;
   joinDate: string;
@@ -52,18 +51,18 @@ export default function AdminPanel() {
     try {
       const storedKeys = localStorage.getItem('gemini_api_keys');
       if (storedKeys) {
-        setApiKeys(JSON.parse(storedKeys));
+        const parsed = JSON.parse(storedKeys);
+        if (parsed && parsed.length > 0) {
+          setApiKeys(parsed);
+        } else {
+          // If empty, set defaults
+          setApiKeys(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']);
+          localStorage.setItem('gemini_api_keys', JSON.stringify(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']));
+        }
       } else {
-        // Default fallbacks if empty
-        const defaultKeys = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
-        setApiKeys(defaultKeys);
-        localStorage.setItem('gemini_api_keys', JSON.stringify(defaultKeys));
+        localStorage.setItem('gemini_api_keys', JSON.stringify(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']));
       }
-    } catch {
-      const defaultKeys = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
-      setApiKeys(defaultKeys);
-      localStorage.setItem('gemini_api_keys', JSON.stringify(defaultKeys));
-    }
+    } catch {}
 
     // Load Settings
     try {
@@ -71,19 +70,16 @@ export default function AdminPanel() {
       if (storedSettings) setAdminSettings(JSON.parse(storedSettings));
     } catch {}
 
-    // Load Users from Server DB
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('/api/admin/users');
-        if (response.ok) {
-          const data = await response.json();
-          setUsers(data.users || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch users:', err);
+    // Load Mock Users
+    try {
+      const storedUsers = localStorage.getItem('admin_users');
+      if (storedUsers) {
+        setUsers(JSON.parse(storedUsers));
+      } else {
+        setUsers([]);
+        localStorage.setItem('admin_users', JSON.stringify([]));
       }
-    };
-    fetchUsers();
+    } catch {}
   }, []);
 
   const showToast = (msg: string) => {

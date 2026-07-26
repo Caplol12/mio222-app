@@ -155,29 +155,6 @@ async function startServer() {
 
 
   // Auth endpoints
-  // Guest Login endpoint for server
-  app.post("/api/auth/guest", (req, res) => {
-    try {
-      const db = getDB();
-      const id = 'guest_' + Math.random().toString(36).substr(2, 9);
-      const name = 'کاربر مهمان';
-      const email = `guest_${Date.now()}@example.com`; // Unique email so they are registered as distinct entries if needed
-
-      db.run('INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)', [id, name, email, 'guest-no-password'], (err) => {
-        if (err) return res.status(500).json({ error: "خطا در ورود مهمان" });
-        
-        // Find the user to get their numeric ID
-        db.get('SELECT * FROM users WHERE id = ?', [id], (err: any, user: any) => {
-           const finalUser = user || { id, name, email };
-           const token = jwt.sign({ id: finalUser.id, email: finalUser.email }, JWT_SECRET, { expiresIn: '1d' });
-           res.json({ token, user: { id: finalUser.id, numericId: finalUser.numericId, name: finalUser.name, email: finalUser.email, picture: '' } });
-        });
-      });
-    } catch (err) {
-      res.status(500).json({ error: "خطای سرور" });
-    }
-  });
-
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { email, password, name } = req.body;
@@ -282,42 +259,6 @@ async function startServer() {
     }
   });
 
-
-  // Get all users for admin
-  app.get("/api/admin/users", (req, res) => {
-    try {
-      const db = getDB();
-      db.all('SELECT * FROM users', [], (err: any, users: any[]) => {
-        if (err) return res.status(500).json({ error: "خطای سرور در دریافت کاربران" });
-        // Return without password for security
-        const safeUsers = users.map((u: any) => ({
-          id: u.id,
-          numericId: u.numericId || (typeof u.id === 'number' ? u.id : parseInt(u.id.replace(/\D/g, '')) || 0),
-          name: u.name,
-          email: u.email,
-          joinDate: u.createdAt || new Date().toISOString(),
-          status: 'active'
-        }));
-        res.json({ users: safeUsers });
-      });
-    } catch (err) {
-      res.status(500).json({ error: "خطای سرور" });
-    }
-  });
-
-  // Download complete database backup
-  app.get("/api/admin/backup", (req, res) => {
-    try {
-      const dbPath = path.join(process.cwd(), 'database.json');
-      if (fs.existsSync(dbPath)) {
-        res.download(dbPath, `backup_database_${new Date().toISOString().split('T')[0]}.json`);
-      } else {
-        res.status(404).json({ error: "دیتابیس یافت نشد" });
-      }
-    } catch (err) {
-      res.status(500).json({ error: "خطا در تهیه بکاپ" });
-    }
-  });
 
   // Export API keys to .env
   app.post("/api/admin/export-env", async (req, res) => {

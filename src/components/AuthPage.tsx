@@ -67,26 +67,15 @@ export default function AuthPage() {
     }
   };
 
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/guest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (!response.ok) {
-        throw new Error('خطا در ارتباط با سرور');
-      }
-      
-      const data = await response.json();
-      login(data.token, data.user);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'خطای اتصال به سرور');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleGuestLogin = () => {
+    const guestUser = {
+      id: 'guest_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36),
+      name: 'کاربر مهمان',
+      email: 'guest@example.com',
+      picture: ''
+    };
+    login('guest-token', guestUser);
+    navigate('/');
   };
 
   return (
