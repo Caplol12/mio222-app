@@ -93,103 +93,67 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
 
 
     const callGeminiApi = async (userMessage: string, history: Message[]): Promise<string> => {
-      let currentApiKeys = apiKeys;
-      const DEFAULT_KEYS = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
+      const currentKey = localStorage.getItem('user_gemini_api_key') || '';
       
-      try {
-        const stored = localStorage.getItem('gemini_api_keys');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && parsed.length > 0) {
-            currentApiKeys = parsed;
-            setApiKeys(currentApiKeys);
-          } else {
-            currentApiKeys = DEFAULT_KEYS;
-          }
-        } else {
-          currentApiKeys = DEFAULT_KEYS;
-        }
-      } catch (e) {
-        currentApiKeys = DEFAULT_KEYS;
-      }
-  
-      if (currentApiKeys.length === 0) {
-        throw new Error('No API keys configured.');
+      if (!currentKey.trim()) {
+        throw new Error('لطفاً ابتدا کلید API شخصی خود را از طریق آیکون کلید ⚙️ وارد کنید.');
       }
 
-    const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید. در صورتی که کاربر سوالی درباره نشانک‌ها پرسید بر اساس این داده‌ها به او پاسخ دهید:
+      const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید. در صورتی که کاربر سوالی درباره نشانک‌ها پرسید بر اساس این داده‌ها به او پاسخ دهید:
 دسته بندی ها: ${JSON.stringify(categories)}
 نشانک ها: ${JSON.stringify(bookmarks)}`;
 
-    const contents = [...history, { role: 'user', content: userMessage }].map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    }));
-    
-    const requestBody = {
-      systemInstruction: {
-        role: "system",
-        parts: [{ text: systemPrompt }]
-      },
-      contents
-    };
+      const contents = [...history, { role: 'user', content: userMessage }].map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
+      
+      const requestBody = {
+        systemInstruction: {
+          role: "system",
+          parts: [{ text: systemPrompt }]
+        },
+        contents
+      };
 
-    let attempts = 0;
-    let index = currentKeyIndex;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-    while (attempts < currentApiKeys.length) {
-      const currentKey = currentApiKeys[index];
-      const now = Date.now();
-      const cooldownUntil = cooldowns[currentKey] || 0;
+      try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminSettings.defaultAiModel || 'gemini-2.5-flash'}:generateContent?key=${currentKey.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
-      if (now >= cooldownUntil) {
-        // Try this key
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
-
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminSettings.defaultAiModel || 'gemini-2.5-flash'}:generateContent?key=${currentKey}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal
-          });
-          
-          clearTimeout(timeoutId);
-
-          if (!response.ok) {
-            // 429, 403 or server errors
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-          }
-
-          const data = await response.json();
-          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (!text) {
-             throw new Error('Invalid response format');
-          }
-
-          // Update index for round-robin
-          setCurrentKeyIndex((index + 1) % currentApiKeys.length);
-          return text;
-
-        } catch (error: any) {
-          console.error(`Error with key ${currentKey.substring(0, 5)}...:`, error);
-          // Set cooldown for 60 seconds
-          setCooldowns(prev => ({ ...prev, [currentKey]: Date.now() + 60000 }));
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (response.status === 400) throw new Error('کلید API نامعتبر است. لطفاً کلید صحیح را وارد کنید.');
+          if (response.status === 403) throw new Error('دسترسی رد شد. کلید API شما معتبر نیست یا منقضی شده.');
+          if (response.status === 429) throw new Error('محدودیت درخواست. لطفاً کمی صبر کنید و دوباره امتحان کنید.');
+          throw new Error(`خطای سرور گوگل: ${response.status}`);
         }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!text) {
+          throw new Error('پاسخ نامعتبر از سرور گوگل دریافت شد.');
+        }
+
+        return text;
+
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+          throw new Error('زمان انتظار تمام شد. لطفاً دوباره امتحان کنید.');
+        }
+        throw error;
       }
-
-      // Move to next key
-      index = (index + 1) % currentApiKeys.length;
-      attempts++;
-    }
-
-    throw new Error('تمام کلیدها با خطا مواجه شدند یا در حالت انتظار هستند (۶۰ ثانیه صبر کنید). لطفاً از سالم بودن کلیدهای API اطمینان حاصل کنید.');
-  };
+    };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
