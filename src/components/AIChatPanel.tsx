@@ -245,7 +245,9 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
               <button 
                 onClick={() => {
                   if (keyInput.trim()) {
-                    setUserApiKey(keyInput.trim());
+                    const newKey = keyInput.trim();
+                    setUserApiKey(newKey);
+                    localStorage.setItem('user_gemini_api_key', newKey);
                     setKeyInput('');
                     setShowKeyInput(false);
                   }
