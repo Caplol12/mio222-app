@@ -591,17 +591,6 @@ export default function DraggableDashboard({
                           <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                           <span>Open</span>
                         </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(null);
-                            window.open(bm.url, "_blank", "noopener,noreferrer");
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
-                        >
-                          <EyeOff className="w-3.5 h-3.5 opacity-70" />
-                          <span>Open in incognito</span>
-                        </button>
                         <div className="h-px bg-slate-900/10 dark:bg-white/10 my-1"></div>
                         <button 
                           onClick={(e) => {
