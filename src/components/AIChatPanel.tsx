@@ -38,6 +38,15 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
+  // User's personal API key
+  const [userApiKey, setUserApiKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem('user_gemini_api_key') || '';
+    } catch { return ''; }
+  });
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
+  
   // Settings & Keys State
   const [apiKeys, setApiKeys] = useState<string[]>(() => {
     const DEFAULT_KEYS = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
