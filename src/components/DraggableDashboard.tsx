@@ -38,7 +38,7 @@ function SortableItem({ id, isActive, children }: { id: string, isActive?: boole
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    zIndex: (isDragging || isActive) ? 50 : 1,
+    zIndex: (isDragging || isActive) ? 50 : undefined,
   };
 
   return (
