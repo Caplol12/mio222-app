@@ -260,6 +260,41 @@ async function startServer() {
   });
 
 
+  // Get all users for admin
+  app.get("/api/admin/users", (req, res) => {
+    try {
+      const db = getDB();
+      db.all('SELECT * FROM users', [], (err: any, users: any[]) => {
+        if (err) return res.status(500).json({ error: "خطای سرور در دریافت کاربران" });
+        // Return without password for security
+        const safeUsers = users.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          joinDate: u.createdAt || new Date().toISOString(),
+          status: 'active'
+        }));
+        res.json({ users: safeUsers });
+      });
+    } catch (err) {
+      res.status(500).json({ error: "خطای سرور" });
+    }
+  });
+
+  // Download complete database backup
+  app.get("/api/admin/backup", (req, res) => {
+    try {
+      const dbPath = path.join(process.cwd(), 'database.json');
+      if (fs.existsSync(dbPath)) {
+        res.download(dbPath, `backup_database_${new Date().toISOString().split('T')[0]}.json`);
+      } else {
+        res.status(404).json({ error: "دیتابیس یافت نشد" });
+      }
+    } catch (err) {
+      res.status(500).json({ error: "خطا در تهیه بکاپ" });
+    }
+  });
+
   // Export API keys to .env
   app.post("/api/admin/export-env", async (req, res) => {
     try {

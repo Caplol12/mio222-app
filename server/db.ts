@@ -26,6 +26,13 @@ const saveDB = () => {
 };
 
 export const getDB = () => ({
+  all: (query: string, params: any[], callback: (err: any, rows: any[]) => void) => {
+    if (query.includes('SELECT * FROM users')) {
+      callback(null, db.users || []);
+    } else {
+      callback(null, []);
+    }
+  },
   get: (query: string, params: any[], callback: (err: any, row: any) => void) => {
     // Very simple mock of sqlite get for our specific queries
     if (query.includes('email = ?')) {
