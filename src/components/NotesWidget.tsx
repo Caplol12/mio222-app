@@ -123,7 +123,7 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
       </div>
       
       {/* List Items */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-slate-50/50 dark:bg-black/20" dir="rtl">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-slate-50/50 dark:bg-black/20 relative z-0" dir="rtl">
         {notes.map(note => (
           <div 
             key={note.id} 
