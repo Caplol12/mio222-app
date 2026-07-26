@@ -225,30 +225,70 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
       dir="rtl"
     >
       {/* Header */}
-      <div className="p-4 border-b border-white/20 dark:border-white/10 flex items-center justify-between shrink-0 bg-white/10 dark:bg-black/10">
-        <div className="flex items-center gap-2 text-slate-800 dark:text-white">
-          <Bot className="w-5 h-5 text-[var(--color-primary)]" />
-          <h3 className="font-bold">دستیار هوشمند</h3>
+      <div className="p-4 border-b border-white/20 dark:border-white/10 flex flex-col gap-3 shrink-0 bg-white/10 dark:bg-black/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-white">
+            <Bot className="w-5 h-5 text-[var(--color-primary)]" />
+            <h3 className="font-bold">دستیار هوشمند</h3>
+          </div>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className={`p-1.5 rounded-full transition-colors ${showKeyInput ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'text-slate-500 hover:bg-slate-900/10 dark:hover:bg-white/10'}`}
+              title="تنظیمات کلید API"
+            >
+              <Key className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => {
+                if (window.confirm('آیا از پاک کردن تاریخچه چت مطمئن هستید؟')) {
+                  setMessages([{ role: 'model', content: 'سلام! چطور می‌تونم بهتون کمک کنم؟' }]);
+                }
+              }}
+              className="p-1.5 text-slate-500 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-full transition-colors"
+              title="پاک کردن تاریخچه"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1.5 text-slate-500 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button 
-            onClick={() => {
-              if (window.confirm('آیا از پاک کردن تاریخچه چت مطمئن هستید؟')) {
-                setMessages([{ role: 'model', content: 'سلام! چطور می‌تونم بهتون کمک کنم؟' }]);
-              }
-            }}
-            className="p-1.5 text-slate-500 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-full transition-colors"
-            title="پاک کردن تاریخچه"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-          <button 
-            onClick={onClose}
-            className="p-1.5 text-slate-500 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-full transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        
+        {/* API Key Input Section */}
+        {showKeyInput && (
+          <div className="animate-in slide-in-from-top-2 flex flex-col gap-2 p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-white/40 dark:border-white/10">
+            <div className="text-[11px] text-slate-600 dark:text-slate-400">
+              برای استفاده از هوش مصنوعی، لطفاً کلید API شخصی خود (Gemini) را وارد کنید. کلید شما فقط در مرورگر خودتان ذخیره می‌شود.
+            </div>
+            <div className="flex gap-2">
+              <input 
+                type="password"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder={userApiKey ? '••••••••••••••••••••••••' : 'AIzaSy...'}
+                className="flex-1 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/20 rounded-lg px-3 py-1.5 text-[12px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50"
+              />
+              <button 
+                onClick={() => {
+                  if (keyInput.trim()) {
+                    setUserApiKey(keyInput.trim());
+                    setKeyInput('');
+                    setShowKeyInput(false);
+                  }
+                }}
+                disabled={!keyInput.trim()}
+                className="px-3 py-1.5 bg-[var(--color-primary)] text-white text-[12px] font-medium rounded-lg disabled:opacity-50 hover:brightness-110 transition-all"
+              >
+                ذخیره
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
