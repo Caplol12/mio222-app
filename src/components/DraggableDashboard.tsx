@@ -8,7 +8,8 @@ import {
   useSensor, 
   useSensors,
   DragOverlay,
-  defaultDropAnimationSideEffects
+  defaultDropAnimationSideEffects,
+  useDroppable
 } from '@dnd-kit/core';
 import { 
   SortableContext, 
@@ -44,6 +45,36 @@ function SortableItem({ id, isActive, children }: { id: string, isActive?: boole
   return (
     <div ref={setNodeRef} style={style} className="relative group/item w-full min-w-0">
       {children({ attributes, listeners })}
+    </div>
+  );
+}
+
+// Droppable Column wrapper to allow dropping into empty columns
+function DroppableColumn({ id, items, children, activeId }: { id: string, items: string[], children: React.ReactNode, activeId: string | null }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  });
+
+  const isEmpty = items.length === 0;
+  const isDraggingAny = activeId !== null;
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      className={`flex flex-col min-h-[200px] w-full transition-colors duration-200 rounded-2xl ${
+        (isEmpty && isOver) ? 'bg-black/10 dark:bg-white/10 border-2 border-dashed border-black/20 dark:border-white/20' : 
+        (isEmpty && isDraggingAny) ? 'bg-black/5 dark:bg-white/5 border-2 border-dashed border-transparent' : 
+        ''
+      }`}
+    >
+      {children}
+      {isEmpty && isDraggingAny && (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <span className="text-slate-400 dark:text-slate-500 font-medium text-sm opacity-50">
+            برای افزودن رها کنید
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -689,7 +720,7 @@ export default function DraggableDashboard({
           {Object.keys(columns).map(colId => (
           <div key={colId} className="flex flex-col w-full min-w-0">
             <SortableContext id={colId} items={columns[colId]} strategy={verticalListSortingStrategy}>
-              <div className="flex flex-col min-h-[200px]">
+              <DroppableColumn id={colId} items={columns[colId]} activeId={activeId}>
                 {columns[colId].map(id => (
                   <SortableItem key={id} id={id} isActive={isItemActive(id)}>
                     {(dragProps: any) => renderItem(id, dragProps)}
@@ -749,7 +780,7 @@ export default function DraggableDashboard({
                     </div>
                   </div>
                 )}
-              </div>
+              </DroppableColumn>
             </SortableContext>
           </div>
         ))}
