@@ -67,13 +67,13 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
   };
 
   return (
-    <div style={getGlassStyle()} className="border border-white/40 dark:border-white/10 rounded-[24px] p-0 flex flex-col h-full shadow-sm relative w-full min-w-0 text-slate-800 dark:text-slate-200 font-sans">
+    <div style={getGlassStyle()} className={`border border-white/40 dark:border-white/10 rounded-[24px] p-0 flex flex-col h-full shadow-sm relative w-full min-w-0 text-slate-800 dark:text-slate-200 font-sans ${menuOpen ? 'z-50' : 'z-10'}`}>
       
       {/* Header */}
       <div 
         {...dragProps?.attributes}
         {...dragProps?.listeners}
-        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-3 py-2.5 relative z-[100] rounded-t-[24px] min-w-0 gap-2"
+        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-3 py-2.5 relative z-50 rounded-t-[24px] min-w-0 gap-2"
       >
         <h3 className="font-bold text-[14px] text-slate-800 dark:text-white font-sans truncate flex-1">{widgetTitle}</h3>
         <div className="relative flex-shrink-0 flex items-center">
