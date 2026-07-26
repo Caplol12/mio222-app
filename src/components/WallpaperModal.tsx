@@ -9,6 +9,11 @@ interface WallpaperModalProps {
 }
 
 const PRESETS = [
+  // Local Custom Wallpapers
+  { type: 'image', url: '/wallpapers/bg1.jpg' },
+  { type: 'image', url: '/wallpapers/bg2.jpg' },
+  { type: 'image', url: '/wallpapers/bg3.jpg' },
+  
   // Anime style / Digital Art
   { type: 'image', url: 'https://images.unsplash.com/photo-1578637387939-43c525550085?q=80&w=2048&auto=format&fit=crop' },
   { type: 'image', url: 'https://images.unsplash.com/photo-1607513746994-51f730a44832?q=80&w=2048&auto=format&fit=crop' },
