@@ -67,13 +67,13 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
   };
 
   return (
-    <div style={getGlassStyle()} className="border border-white/40 dark:border-white/10 rounded-[24px] p-0 flex flex-col h-full shadow-sm relative w-full min-w-0 text-slate-800 dark:text-slate-200 overflow-hidden font-sans">
+    <div style={getGlassStyle()} className="border border-white/40 dark:border-white/10 rounded-[24px] p-0 flex flex-col h-full shadow-sm relative w-full min-w-0 text-slate-800 dark:text-slate-200 font-sans">
       
       {/* Header */}
       <div 
         {...dragProps?.attributes}
         {...dragProps?.listeners}
-        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative z-[100]"
+        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative z-[100] rounded-t-[24px]"
       >
         <h3 className="font-medium text-[16px] text-slate-800 dark:text-white font-sans">{widgetTitle}</h3>
         <div className="relative">
@@ -123,7 +123,7 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
       </div>
       
       {/* List Items */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-slate-50/50 dark:bg-black/20 relative z-0" dir="rtl">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-slate-50/50 dark:bg-black/20 relative z-0 rounded-b-[24px]" dir="rtl">
         {notes.map(note => (
           <div 
             key={note.id} 
