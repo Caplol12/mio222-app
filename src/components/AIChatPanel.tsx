@@ -40,11 +40,18 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
   
   // Settings & Keys State
   const [apiKeys, setApiKeys] = useState<string[]>(() => {
+    const DEFAULT_KEYS = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
     try {
       const stored = localStorage.getItem('gemini_api_keys');
-      return stored ? JSON.parse(stored) : [];
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) return parsed;
+      }
+      localStorage.setItem('gemini_api_keys', JSON.stringify(DEFAULT_KEYS));
+      return DEFAULT_KEYS;
     } catch {
-      return [];
+      localStorage.setItem('gemini_api_keys', JSON.stringify(DEFAULT_KEYS));
+      return DEFAULT_KEYS;
     }
   });
   
@@ -76,19 +83,30 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
 
 
 
-  const callGeminiApi = async (userMessage: string, history: Message[]): Promise<string> => {
-    let currentApiKeys = apiKeys;
-    try {
-      const stored = localStorage.getItem('gemini_api_keys');
-      if (stored) {
-        currentApiKeys = JSON.parse(stored);
-        setApiKeys(currentApiKeys);
+    const callGeminiApi = async (userMessage: string, history: Message[]): Promise<string> => {
+      let currentApiKeys = apiKeys;
+      const DEFAULT_KEYS = ['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ'];
+      
+      try {
+        const stored = localStorage.getItem('gemini_api_keys');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.length > 0) {
+            currentApiKeys = parsed;
+            setApiKeys(currentApiKeys);
+          } else {
+            currentApiKeys = DEFAULT_KEYS;
+          }
+        } else {
+          currentApiKeys = DEFAULT_KEYS;
+        }
+      } catch (e) {
+        currentApiKeys = DEFAULT_KEYS;
       }
-    } catch (e) {}
-
-    if (currentApiKeys.length === 0) {
-      throw new Error('No API keys configured.');
-    }
+  
+      if (currentApiKeys.length === 0) {
+        throw new Error('No API keys configured.');
+      }
 
     const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید. در صورتی که کاربر سوالی درباره نشانک‌ها پرسید بر اساس این داده‌ها به او پاسخ دهید:
 دسته بندی ها: ${JSON.stringify(categories)}

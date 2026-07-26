@@ -30,7 +30,7 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'settings'>('keys');
 
   // --- API Keys State ---
-  const [apiKeys, setApiKeys] = useState<string[]>([]);
+  const [apiKeys, setApiKeys] = useState<string[]>(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']);
   const [newKeyInput, setNewKeyInput] = useState('');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -50,7 +50,18 @@ export default function AdminPanel() {
     // Load Keys
     try {
       const storedKeys = localStorage.getItem('gemini_api_keys');
-      if (storedKeys) setApiKeys(JSON.parse(storedKeys));
+      if (storedKeys) {
+        const parsed = JSON.parse(storedKeys);
+        if (parsed && parsed.length > 0) {
+          setApiKeys(parsed);
+        } else {
+          // If empty, set defaults
+          setApiKeys(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']);
+          localStorage.setItem('gemini_api_keys', JSON.stringify(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']));
+        }
+      } else {
+        localStorage.setItem('gemini_api_keys', JSON.stringify(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']));
+      }
     } catch {}
 
     // Load Settings
