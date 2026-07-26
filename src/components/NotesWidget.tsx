@@ -73,10 +73,10 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
       <div 
         {...dragProps?.attributes}
         {...dragProps?.listeners}
-        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative z-[100] rounded-t-[24px]"
+        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-3 py-2.5 relative z-[100] rounded-t-[24px] min-w-0 gap-2"
       >
-        <h3 className="font-medium text-[16px] text-slate-800 dark:text-white font-sans">{widgetTitle}</h3>
-        <div className="relative">
+        <h3 className="font-bold text-[14px] text-slate-800 dark:text-white font-sans truncate flex-1">{widgetTitle}</h3>
+        <div className="relative flex-shrink-0 flex items-center">
           <button
             onClick={(e) => {
               e.stopPropagation();
