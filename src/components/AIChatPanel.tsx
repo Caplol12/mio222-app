@@ -72,9 +72,9 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
   const [adminSettings, setAdminSettings] = useState(() => {
     try {
       const stored = localStorage.getItem('admin_settings');
-      return stored ? JSON.parse(stored) : { defaultAiModel: 'gemini-2.0-flash', chatbotEnabled: true };
+      return stored ? JSON.parse(stored) : { defaultAiModel: 'gemini-2.5-flash', chatbotEnabled: true };
     } catch {
-      return { defaultAiModel: 'gemini-2.0-flash', chatbotEnabled: true };
+      return { defaultAiModel: 'gemini-2.5-flash', chatbotEnabled: true };
     }
   });
 
@@ -148,7 +148,7 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
 
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminSettings.defaultAiModel || 'gemini-2.0-flash'}:generateContent?key=${currentKey}`, {
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminSettings.defaultAiModel || 'gemini-2.5-flash'}:generateContent?key=${currentKey}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

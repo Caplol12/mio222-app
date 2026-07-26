@@ -41,7 +41,7 @@ export default function AdminPanel() {
 
   // --- Settings State ---
   const [adminSettings, setAdminSettings] = useState<AdminSettings>({
-    defaultAiModel: 'gemini-2.0-flash',
+    defaultAiModel: 'gemini-2.5-flash',
     chatbotEnabled: true,
   });
 
@@ -382,16 +382,16 @@ export default function AdminPanel() {
                   <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
                     <label className="block text-sm font-bold text-white mb-2">مدل پیش‌فرض هوش مصنوعی</label>
                     <p className="text-xs text-slate-400 mb-4">مدلی که برای دستیار هوشمند و قابلیت‌های متنی استفاده می‌شود.</p>
-                    <select 
+                    <select
                       value={adminSettings.defaultAiModel}
-                      onChange={e => setAdminSettings({...adminSettings, defaultAiModel: e.target.value})}
-                      className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] appearance-none"
-                      dir="ltr"
+                      onChange={(e) => setAdminSettings({ ...adminSettings, defaultAiModel: e.target.value })}
+                      className="w-full bg-white/50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-800 dark:text-white"
                     >
-                      <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-                      <option value="gemini-2.0-pro">gemini-2.0-pro</option>
-                      <option value="gemini-1.5-flash">gemini-1.5-flash</option>
-                      <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+                      <option value="gemini-2.5-flash" className="text-slate-800">gemini-2.5-flash (پیش‌فرض)</option>
+                      <option value="gemini-2.5-pro" className="text-slate-800">gemini-2.5-pro</option>
+                      <option value="gemini-2.0-flash" className="text-slate-800">gemini-2.0-flash</option>
+                      <option value="gemini-1.5-pro" className="text-slate-800">gemini-1.5-pro</option>
+                      <option value="gemini-1.5-flash" className="text-slate-800">gemini-1.5-flash</option>
                     </select>
                   </div>
 
