@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, MoreHorizontal, Edit2, Trash2 } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
 
@@ -33,6 +33,8 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const [widgetTitle, setWidgetTitle] = useState(() => {
     try {
       return localStorage.getItem('stash_notes_widget_title') || 'یادداشت‌ها';
@@ -78,20 +80,32 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
         <h3 className="font-bold text-[14px] text-slate-800 dark:text-white font-sans truncate flex-1">{widgetTitle}</h3>
         <div className="relative flex-shrink-0 flex items-center">
           <button
+            ref={menuBtnRef}
             onClick={(e) => {
               e.stopPropagation();
-              setMenuOpen(!menuOpen);
+              if (menuOpen) {
+                setMenuOpen(false);
+              } else {
+                const rect = menuBtnRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setMenuPos({ top: rect.bottom + 4, left: rect.left - 180 });
+                }
+                setMenuOpen(true);
+              }
             }}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
           >
             <MoreHorizontal className="w-5 h-5" />
           </button>
           {menuOpen && (
-            <div
-              onClick={e => e.stopPropagation()}
-              className="absolute left-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]"
-              dir="rtl"
-            >
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setMenuOpen(false)} />
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ position: 'fixed', top: menuPos.top, left: Math.max(menuPos.left, 8) }}
+                className="z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]"
+                dir="rtl"
+              >
               <button
                 onClick={() => {
                   setMenuOpen(false);
@@ -117,7 +131,8 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
                   حذف ویجت
                 </button>
               )}
-            </div>
+              </div>
+            </>
           )}
         </div>
       </div>
