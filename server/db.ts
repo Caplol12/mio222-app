@@ -39,6 +39,10 @@ export const getDB = () => ({
       const email = params[0];
       const user = db.users.find(u => u.email === email);
       callback(null, user || null);
+    } else if (query.includes('id = ?')) {
+      const id = params[0];
+      const user = db.users.find(u => u.id === id);
+      callback(null, user || null);
     } else {
       callback(null, null);
     }
@@ -52,11 +56,15 @@ export const getDB = () => ({
       const name = params[1];
       const email = params[2];
       
+      // Auto-increment numeric ID based on the max existing one
+      const maxNumericId = db.users.reduce((max, u) => Math.max(max, u.numericId || 0), 1000);
+      const newNumericId = maxNumericId + 1;
+      
       let newUser: any;
       if (params.length === 5) {
-        newUser = { id, name, email, picture: params[3], provider: params[4], createdAt: new Date().toISOString() };
+        newUser = { id, numericId: newNumericId, name, email, picture: params[3], provider: params[4], createdAt: new Date().toISOString() };
       } else {
-        newUser = { id, name, email, password: params[3], picture: '', provider: 'local', createdAt: new Date().toISOString() };
+        newUser = { id, numericId: newNumericId, name, email, password: params[3], picture: '', provider: 'local', createdAt: new Date().toISOString() };
       }
       
       db.users.push(newUser);

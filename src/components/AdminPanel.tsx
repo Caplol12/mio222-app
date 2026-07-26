@@ -8,6 +8,7 @@ import { useGlassStyle } from '../contexts/SettingsContext';
 // Types
 interface User {
   id: string;
+  numericId?: number;
   name: string;
   email: string;
   joinDate: string;

@@ -155,6 +155,29 @@ async function startServer() {
 
 
   // Auth endpoints
+  // Guest Login endpoint for server
+  app.post("/api/auth/guest", (req, res) => {
+    try {
+      const db = getDB();
+      const id = 'guest_' + Math.random().toString(36).substr(2, 9);
+      const name = 'کاربر مهمان';
+      const email = `guest_${Date.now()}@example.com`; // Unique email so they are registered as distinct entries if needed
+
+      db.run('INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)', [id, name, email, 'guest-no-password'], (err) => {
+        if (err) return res.status(500).json({ error: "خطا در ورود مهمان" });
+        
+        // Find the user to get their numeric ID
+        db.get('SELECT * FROM users WHERE id = ?', [id], (err: any, user: any) => {
+           const finalUser = user || { id, name, email };
+           const token = jwt.sign({ id: finalUser.id, email: finalUser.email }, JWT_SECRET, { expiresIn: '1d' });
+           res.json({ token, user: { id: finalUser.id, numericId: finalUser.numericId, name: finalUser.name, email: finalUser.email, picture: '' } });
+        });
+      });
+    } catch (err) {
+      res.status(500).json({ error: "خطای سرور" });
+    }
+  });
+
   app.post("/api/auth/register", async (req, res) => {
     try {
       const { email, password, name } = req.body;
@@ -269,6 +292,7 @@ async function startServer() {
         // Return without password for security
         const safeUsers = users.map((u: any) => ({
           id: u.id,
+          numericId: u.numericId || (typeof u.id === 'number' ? u.id : parseInt(u.id.replace(/\D/g, '')) || 0),
           name: u.name,
           email: u.email,
           joinDate: u.createdAt || new Date().toISOString(),
