@@ -241,7 +241,7 @@ export default function DraggableDashboard({
   
   // Save to local storage on change
   useEffect(() => {
-    if (Object.values(columns).some(col => col.length > 0)) {
+    if (Object.values(columns).some(col => Array.isArray(col) && col.length > 0)) {
       localStorage.setItem(`dashboard_layout_${activePage}`, JSON.stringify(columns));
     }
   }, [activePage, columns]);
