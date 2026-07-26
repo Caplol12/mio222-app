@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { Mail, Lock, User as UserIcon, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin } from '@react-oauth/google';
-import { Mail, Lock, User as UserIcon, Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
 
 export default function AuthPage() {
@@ -10,11 +9,11 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   
-  const { login } = useAuth();
   const navigate = useNavigate();
+  const { login } = useAuth();
   const { getGlassStyle } = useGlassStyle();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,44 +21,45 @@ export default function AuthPage() {
     setError('');
     setIsLoading(true);
 
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    const payload = isLogin ? { email, password } : { email, password, name };
-
     try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      if (isLogin) {
+        // Mock Login
+        const usersJSON = localStorage.getItem('mock_users_db');
+        const users = usersJSON ? JSON.parse(usersJSON) : [];
+        const user = users.find((u: any) => u.email === email && u.password === password);
+        
+        if (!user) {
+          throw new Error('ایمیل یا رمز عبور اشتباه است.');
+        }
+        
+        // Remove password before saving to state
+        const { password: _, ...userData } = user;
+        login('mock-token-' + Date.now(), userData);
+        navigate('/');
+      } else {
+        // Mock Register
+        const usersJSON = localStorage.getItem('mock_users_db');
+        const users = usersJSON ? JSON.parse(usersJSON) : [];
+        
+        if (users.find((u: any) => u.email === email)) {
+          throw new Error('این ایمیل قبلاً ثبت شده است.');
+        }
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'خطا در ارتباط با سرور');
+        const newUser = {
+          id: 'user_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36),
+          name: name || 'کاربر جدید',
+          email,
+          password, // Stored only in local mock DB
+          picture: ''
+        };
+
+        users.push(newUser);
+        localStorage.setItem('mock_users_db', JSON.stringify(users));
+
+        const { password: _, ...userData } = newUser;
+        login('mock-token-' + Date.now(), userData);
+        navigate('/');
       }
-
-      login(data.token, data.user);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    setError('');
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: credentialResponse.credential }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'خطا در احراز هویت گوگل');
-      
-      login(data.token, data.user);
-      navigate('/');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -69,7 +69,7 @@ export default function AuthPage() {
 
   const handleGuestLogin = () => {
     const guestUser = {
-      id: 'guest_' + Math.random().toString(36).substring(2, 9),
+      id: 'guest_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36),
       name: 'کاربر مهمان',
       email: 'guest@example.com',
       picture: ''
@@ -161,23 +161,6 @@ export default function AuthPage() {
             <UserIcon className="w-5 h-5" />
             ورود بدون ثبت نام (مهمان)
           </button>
-        </div>
-
-        <div className="mt-6 flex items-center gap-4">
-          <div className="flex-1 h-px bg-white/20"></div>
-          <span className="text-white/50 text-sm">یا</span>
-          <div className="flex-1 h-px bg-white/20"></div>
-        </div>
-
-        <div className="mt-6 flex justify-center">
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={() => setError('خطا در ارتباط با سرور گوگل')}
-            useOneTap
-            theme="filled_black"
-            shape="pill"
-            text={isLogin ? 'signin_with' : 'signup_with'}
-          />
         </div>
 
         <div className="mt-8 text-center text-sm text-white/70">

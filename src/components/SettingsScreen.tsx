@@ -1,6 +1,7 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, User, LogOut, Copy } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SettingsScreenProps {
   pages?: {id: string, name: string}[];
@@ -10,6 +11,7 @@ interface SettingsScreenProps {
 
 export default function SettingsScreen({ onClose, categories, pages = [] }: SettingsScreenProps) {
   const { settings, updateSettings, resetSettings } = useSettings();
+  const { user, logout } = useAuth();
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">{children}</h3>
@@ -31,6 +33,37 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
         <div className="p-6 space-y-8">
           
+          {/* Account Section */}
+          {user && (
+            <section className="space-y-4">
+              <SectionTitle>Account</SectionTitle>
+              <div className="bg-slate-200/50 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-slate-500 overflow-hidden">
+                    {user.picture ? <img src={user.picture} alt={user.name} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm">{user.name}</span>
+                    <span className="text-xs text-slate-500">{user.email}</span>
+                    <span className="text-[10px] text-slate-400 mt-1 font-mono flex items-center gap-1 cursor-pointer hover:text-slate-600" onClick={() => {
+                      navigator.clipboard.writeText(user.id);
+                      alert('Account ID copied!');
+                    }}>
+                      ID: {user.id.substring(0, 16)}... <Copy className="w-3 h-3" />
+                    </span>
+                  </div>
+                </div>
+                <button 
+                  onClick={logout}
+                  className="p-2 rounded-xl bg-slate-200 hover:bg-red-100 text-slate-500 hover:text-red-500 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* Appearance Section */}
           <section className="space-y-4">
             <SectionTitle>Appearance</SectionTitle>
