@@ -73,7 +73,7 @@ export default function NotesWidget({ dragProps, onRemove }: { dragProps?: any, 
       <div 
         {...dragProps?.attributes}
         {...dragProps?.listeners}
-        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative"
+        className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-grab active:cursor-grabbing px-4 py-3 relative z-[100]"
       >
         <h3 className="font-medium text-[16px] text-slate-800 dark:text-white font-sans">{widgetTitle}</h3>
         <div className="relative">
