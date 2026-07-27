@@ -34,29 +34,26 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
         throw new Error('لطفاً تمام فیلدها را پر کنید.');
       }
 
-      // Check existing local users
-      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
-      if (mockUsers.some((u: any) => u.email.toLowerCase() === regEmail.toLowerCase())) {
-        throw new Error('این ایمیل قبلاً ثبت شده است.');
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: regName.trim(), email: regEmail.trim(), password: regPassword })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'این ایمیل قبلاً ثبت شده است.');
       }
+
+      const { token, user: newUser } = await res.json();
 
       const updatedUser: UserType = {
         ...user,
-        name: regName.trim(),
-        email: regEmail.trim(),
+        ...newUser,
         provider: 'local'
       };
 
-      // Save to mock users DB
-      mockUsers.push({
-        ...updatedUser,
-        password: regPassword,
-        createdAt: new Date().toISOString()
-      });
-      localStorage.setItem('mock_users_db', JSON.stringify(mockUsers));
-
-      // Perform sync & login with updated user profile
-      await login('user-token-' + Date.now(), updatedUser);
+      await login(token, updatedUser);
 
       setRegSuccess(`حساب کاربری شما با موفقیت ثبت شد و به آیدی #${updatedUser.numericId} متصل گردید!`);
       setShowRegisterForm(false);

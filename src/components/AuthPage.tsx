@@ -23,44 +23,34 @@ export default function AuthPage() {
 
     try {
       if (isLogin) {
-        // Mock Login
-        const usersJSON = localStorage.getItem('mock_users_db');
-        const users = usersJSON ? JSON.parse(usersJSON) : [];
-        const user = users.find((u: any) => u.email === email && u.password === password);
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
         
-        if (!user) {
-          throw new Error('ایمیل یا رمز عبور اشتباه است.');
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'ایمیل یا رمز عبور اشتباه است.');
         }
         
-        // Remove password before saving to state
-        const { password: _, ...userData } = user;
-        await login('mock-token-' + Date.now(), userData);
+        const { token, user } = await res.json();
+        await login(token, user);
         navigate('/');
       } else {
-        // Mock Register
-        const usersJSON = localStorage.getItem('mock_users_db');
-        const users = usersJSON ? JSON.parse(usersJSON) : [];
-        
-        if (users.find((u: any) => u.email === email)) {
-          throw new Error('این ایمیل قبلاً ثبت شده است.');
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name || 'کاربر جدید', email, password })
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'این ایمیل قبلاً ثبت شده است.');
         }
 
-        const newUser = {
-          id: currentUser?.id || ('user_' + Math.random().toString(36).substring(2, 10)),
-          numericId: currentUser?.numericId,
-          name: name || 'کاربر جدید',
-          email,
-          password,
-          picture: '',
-          provider: 'local',
-          isPremium: currentUser?.isPremium || false
-        };
-
-        users.push(newUser);
-        localStorage.setItem('mock_users_db', JSON.stringify(users));
-
-        const { password: _, ...userData } = newUser;
-        await login('mock-token-' + Date.now(), userData);
+        const { token, user } = await res.json();
+        await login(token, user);
         navigate('/');
       }
     } catch (err: any) {
