@@ -359,7 +359,7 @@ export default function DraggableDashboard({
       const cat = categories.find(c => c.id === catId);
       if (!cat) return null;
       
-      const catBookmarks = pageBookmarks.filter(bm => bm.category === cat.id);
+      const catBookmarks = pageBookmarks.filter(bm => bm.category === cat.id || bm.category === cat.name);
       
       const isSelected = selectedCatId === cat.id;
 

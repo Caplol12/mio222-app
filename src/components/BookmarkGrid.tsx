@@ -245,9 +245,10 @@ export default function BookmarkGrid({
 
   const handleOpenLink = useCallback((bookmark: Bookmark) => {
     window.open(bookmark.url, settings.openNewTab ? "_blank" : "_self", "noopener,noreferrer");
-    // Increment local clicks counter logically
-    bookmark.clickCount += 1;
-  }, []);
+    if (onUpdateBookmark) {
+      onUpdateBookmark(bookmark.id, { clickCount: (bookmark.clickCount || 0) + 1 });
+    }
+  }, [settings.openNewTab, onUpdateBookmark]);
 
   // Filter bookmarks logically by active category / favorite tab AND search query
   const pageBookmarks = useMemo(() => bookmarks.filter(bm => activePage === "home" ? (!bm.pageId || bm.pageId === "home") : bm.pageId === activePage), [bookmarks, activePage]);

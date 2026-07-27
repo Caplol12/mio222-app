@@ -58,17 +58,14 @@ export default function App() {
 
   // Load bookmarks and theme and cache from localStorage on mount
   useEffect(() => {
-    const defaultPresetCatIds = ["طراحی", "فناوری", "آموزشی", "ابزارها", "اجتماعی", "سرگرمی", "تجاری و مالی"];
-
     const savedCategories = localStorage.getItem("stash_categories");
     if (savedCategories) {
       try {
         const parsed: CategoryItem[] = JSON.parse(savedCategories);
-        const filtered = parsed.filter(item => !defaultPresetCatIds.includes(item.id));
-        const finalCategories = filtered.length > 0 ? filtered : INITIAL_CATEGORIES;
-        const uniqueCategories = Array.from(new Map(finalCategories.map((item: CategoryItem) => [item.id, item])).values()) as CategoryItem[];
-        setCategories(uniqueCategories);
-        localStorage.setItem("stash_categories", JSON.stringify(uniqueCategories));
+        const uniqueCategories = Array.from(new Map(parsed.map((item: CategoryItem) => [item.id, item])).values()) as CategoryItem[];
+        const finalCategories = uniqueCategories.length > 0 ? uniqueCategories : INITIAL_CATEGORIES;
+        setCategories(finalCategories);
+        localStorage.setItem("stash_categories", JSON.stringify(finalCategories));
       } catch (e) {
         setCategories(INITIAL_CATEGORIES);
         localStorage.setItem("stash_categories", JSON.stringify(INITIAL_CATEGORIES));
@@ -82,8 +79,13 @@ export default function App() {
     if (savedBookmarks) {
       try {
         const parsed: Bookmark[] = JSON.parse(savedBookmarks);
-        const filtered = parsed.filter(item => !item.id?.startsWith("preset-"));
-        const uniqueBookmarks = Array.from(new Map(filtered.map((item: Bookmark) => [item.url, item])).values()) as Bookmark[];
+        const map = new Map<string, Bookmark>();
+        for (let i = parsed.length - 1; i >= 0; i--) {
+          if (parsed[i] && parsed[i].url) {
+            map.set(parsed[i].url, parsed[i]);
+          }
+        }
+        const uniqueBookmarks = Array.from(map.values()).reverse();
         setBookmarks(uniqueBookmarks);
         localStorage.setItem("stash_bookmarks", JSON.stringify(uniqueBookmarks));
       } catch (e) {
