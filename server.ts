@@ -333,8 +333,9 @@ async function startServer() {
       const { email, password } = req.body;
       if (!email || !password) return res.status(400).json({ error: "ایمیل و رمز عبور الزامی هستند" });
       
+      const cleanEmail = String(email).trim().toLowerCase();
       const db = getDB();
-      db.get('SELECT * FROM users WHERE email = ?', [email], async (err: any, user: any) => {
+      db.get('SELECT * FROM users WHERE email = ?', [cleanEmail], async (err: any, user: any) => {
         if (err) return res.status(500).json({ error: "خطای سرور" });
         if (!user || !user.password) return res.status(400).json({ error: "ایمیل یا رمز عبور اشتباه است" });
         
