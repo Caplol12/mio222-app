@@ -150,38 +150,4 @@ export const updateUserStatus = (idOrNumericId: string | number, status: 'active
   return user;
 };
 
-export const getDB = () => ({
-  get: (query: string, params: any[], callback: (err: any, row: any) => void) => {
-    if (query.includes('email = ?')) {
-      const email = params[0];
-      const user = findUserByEmail(email);
-      callback(null, user || null);
-    } else {
-      callback(null, null);
-    }
-  },
-  run: (query: string, params: any[], callback: (err: any) => void) => {
-    if (query.includes('INSERT INTO users')) {
-      const id = params[0];
-      const name = params[1];
-      const email = params[2];
-      
-      const numericId = getNextNumericId();
-      const isAdminUser = email.toLowerCase() === 'montill22k@gmail.com';
-      let newUser: DBUser;
-      if (params.length === 5) {
-        newUser = { id, numericId, name, email, picture: params[3], provider: params[4], isPremium: false, isAdmin: isAdminUser, status: 'active', createdAt: new Date().toISOString() };
-      } else {
-        newUser = { id, numericId, name, email, password: params[3], picture: '', provider: 'local', isPremium: false, isAdmin: isAdminUser, status: 'active', createdAt: new Date().toISOString() };
-      }
-      
-      db.users.push(newUser);
-      saveDB();
-      callback(null);
-    } else {
-      callback(new Error("Unsupported query"));
-    }
-  }
-});
-
 

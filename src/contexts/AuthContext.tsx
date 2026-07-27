@@ -65,10 +65,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        syncUserWithServer(parsedUser);
+        // Only sync with server if it's a real JWT token (not 'guest-token')
+        if (storedToken !== 'guest-token') {
+          syncUserWithServer(parsedUser);
+        }
       } catch {}
     } else {
-      // Automatic first visit guest registration
+      // Automatic first visit guest registration — sync with server to get a real DB entry
       const guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
       const guestUser: User = {
         id: guestId,
@@ -78,9 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         provider: 'guest',
         isPremium: false
       };
+      // Store guest user locally (no real JWT for guests — they can't access admin panel)
       localStorage.setItem('token', 'guest-token');
+      localStorage.setItem('user', JSON.stringify(guestUser));
       setToken('guest-token');
-      syncUserWithServer(guestUser);
+      setUser(guestUser);
+      // Still sync guest to server DB so admin can see them
+      syncUserToSharedDatabase(guestUser).catch(() => {});
     }
     setIsLoading(false);
   }, []);
