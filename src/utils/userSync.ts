@@ -13,39 +13,56 @@ export interface UserRecord {
 const CLOUD_DB_URL = 'https://jsonblob.com/api/jsonBlob/019fa48c-8aad-751b-9b24-bc8e4461195e';
 
 export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
-  const userMap = new Map<string, UserRecord>();
+  const mergedList: UserRecord[] = [];
 
-  // 1. Try local server API first if available
+  const addOrMergeUser = (u: UserRecord) => {
+    if (!u || (!u.id && !u.numericId && !u.email)) return;
+    
+    const existingIdx = mergedList.findIndex(existing => 
+      (existing.id && u.id && existing.id === u.id) ||
+      (existing.numericId && u.numericId && Number(existing.numericId) === Number(u.numericId)) ||
+      (existing.email && u.email && existing.email.toLowerCase() === u.email.toLowerCase())
+    );
+
+    if (existingIdx >= 0) {
+      mergedList[existingIdx] = {
+        ...mergedList[existingIdx],
+        ...u,
+        numericId: mergedList[existingIdx].numericId || u.numericId,
+        id: mergedList[existingIdx].id || u.id,
+        name: (u.name && u.name !== 'کاربر مهمان') ? u.name : (mergedList[existingIdx].name || u.name),
+        email: (u.email && !u.email.includes('@local.app')) ? u.email : (mergedList[existingIdx].email || u.email),
+        isPremium: u.isPremium !== undefined ? u.isPremium : mergedList[existingIdx].isPremium
+      };
+    } else {
+      mergedList.push({ ...u });
+    }
+  };
+
+  // 1. Fetch from shared Cloud Database (highest priority across devices)
+  try {
+    const res = await fetch(CLOUD_DB_URL);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.users)) {
+        data.users.forEach(addOrMergeUser);
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to fetch from shared cloud user database:', err);
+  }
+
+  // 2. Try local server API
   try {
     const res = await fetch('/api/admin/users');
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (data && Array.isArray(data.users)) {
-        data.users.forEach((u: UserRecord) => {
-          if (u && u.id) userMap.set(u.id, u);
-        });
+        data.users.forEach(addOrMergeUser);
       }
     }
   } catch {}
-
-  // 2. Fetch from shared Cloud Database (works on Vercel across all devices & browsers)
-  try {
-    const res = await fetch(CLOUD_DB_URL);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.users)) {
-        data.users.forEach((u: UserRecord) => {
-          if (u && u.id) {
-            const existing = userMap.get(u.id);
-            userMap.set(u.id, { ...existing, ...u });
-          }
-        });
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to fetch from shared cloud user database:', err);
-  }
 
   // 3. Merge from localStorage (admin_users, mock_users_db, current user)
   try {
@@ -54,21 +71,16 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     const currentUser: UserRecord | null = JSON.parse(localStorage.getItem('user') || 'null');
 
     [...adminUsers, ...mockUsers, currentUser].forEach(u => {
-      if (u && u.id) {
-        const existing = userMap.get(u.id);
-        userMap.set(u.id, { ...existing, ...u });
-      }
+      if (u) addOrMergeUser(u);
     });
   } catch {}
 
-  const merged = Array.from(userMap.values());
-
   // Assign numeric IDs to any users missing one
   let maxId = 1000;
-  merged.forEach(u => {
-    if (u.numericId && u.numericId > maxId) maxId = u.numericId;
+  mergedList.forEach(u => {
+    if (u.numericId && Number(u.numericId) > maxId) maxId = Number(u.numericId);
   });
-  merged.forEach(u => {
+  mergedList.forEach(u => {
     if (!u.numericId) {
       maxId++;
       u.numericId = maxId;
@@ -76,7 +88,7 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     if (u.isPremium === undefined) u.isPremium = false;
   });
 
-  return merged;
+  return mergedList;
 };
 
 export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<UserRecord> => {

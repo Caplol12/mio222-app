@@ -22,7 +22,7 @@ export default function AdminPanel() {
     return <Navigate to="/" replace />;
   }
 
-  const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'settings'>('keys');
+  const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'settings'>('users');
 
   // --- API Keys State ---
   const [apiKeys, setApiKeys] = useState<string[]>(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']);
@@ -33,6 +33,7 @@ export default function AdminPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
 
   // --- Settings State ---
   const [adminSettings, setAdminSettings] = useState<AdminSettings>({
@@ -41,15 +42,18 @@ export default function AdminPanel() {
   });
 
   const fetchUsers = async () => {
+    setIsFetchingUsers(true);
     try {
       const allUsers = await fetchAllSharedUsers();
       setUsers(allUsers);
     } catch (err) {
       console.warn('Failed to fetch shared users:', err);
+    } finally {
+      setIsFetchingUsers(false);
     }
   };
 
-  // Load initial data
+  // Load initial data & auto-refresh interval for users
   useEffect(() => {
     // Load Keys
     try {
@@ -74,6 +78,12 @@ export default function AdminPanel() {
     } catch {}
 
     fetchUsers();
+
+    // Auto-poll user updates every 8 seconds
+    const interval = setInterval(() => {
+      fetchUsers();
+    }, 8000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
