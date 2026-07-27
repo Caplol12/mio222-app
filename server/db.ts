@@ -79,12 +79,14 @@ export const getAllUsers = (): DBUser[] => {
 };
 
 export const findUserById = (idOrNumericId: string | number): DBUser | undefined => {
+  initDB();
   const strSearch = String(idOrNumericId).trim();
   return db.users.find(u => u.id === strSearch || String(u.numericId) === strSearch);
 };
 
 export const findUserByEmail = (email: string): DBUser | undefined => {
   if (!email) return undefined;
+  initDB();
   return db.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 };
 
