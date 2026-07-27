@@ -116,11 +116,11 @@ export default function App() {
   const saveBookmarks = useCallback((updatedBookmarks: Bookmark[] | ((prev: Bookmark[]) => Bookmark[])) => {
     setBookmarks((prev) => {
       const nextBookmarks = typeof updatedBookmarks === 'function' ? updatedBookmarks(prev) : updatedBookmarks;
-      // Preserve newer items when deduplicating URLs
+      // Preserve unique bookmarks by id to allow duplicate URLs across different categories/pages
       const map = new Map<string, Bookmark>();
       for (let i = nextBookmarks.length - 1; i >= 0; i--) {
-        if (nextBookmarks[i] && nextBookmarks[i].url) {
-          map.set(nextBookmarks[i].url, nextBookmarks[i]);
+        if (nextBookmarks[i] && nextBookmarks[i].id) {
+          map.set(nextBookmarks[i].id, nextBookmarks[i]);
         }
       }
       const uniqueBookmarks = Array.from(map.values()).reverse();
@@ -493,14 +493,12 @@ export default function App() {
             (item) => item.id && item.url && item.title && item.category
           );
           if (isValid) {
-                        const newBookmarks = importedData.filter((newBm) => !bookmarks.some((bm) => bm.id === newBm.id || bm.url === newBm.url));
-            const duplicateCount = importedData.length - newBookmarks.length;
-            if (newBookmarks.length > 0) {
-              saveBookmarks([...newBookmarks, ...bookmarks]);
-              alert("بوکمارک‌های شما با موفقیت وارد شدند! (" + duplicateCount + " تکراری نادیده گرفته شد) 🎉");
-            } else {
-              alert("تمام بوکمارک‌های این فایل قبلاً اضافه شده‌اند.");
-            }
+            const newBookmarks = importedData.map((newBm) => ({
+              ...newBm,
+              id: newBm.id || ("bm-" + Date.now().toString() + "-" + Math.random().toString(36).substring(7))
+            }));
+            saveBookmarks([...newBookmarks, ...bookmarks]);
+            alert("بوکمارک‌های شما با موفقیت وارد شدند! 🎉");
           } else {
             alert("ساختار فایل پشتیبان معتبر نیست.");
           }
