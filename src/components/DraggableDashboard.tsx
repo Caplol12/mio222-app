@@ -214,24 +214,43 @@ export default function DraggableDashboard({
     const newCategories = categories.filter(c => !prevCatIds.has(c.id));
     prevCategoriesRef.current = categories;
 
+    const toColItemId = (catId: string) => catId.startsWith('cat-') ? catId : `cat-${catId}`;
+    const existing = new Set<string>();
+    Object.values(cols).forEach(colItems => colItems.forEach(item => existing.add(item)));
+
     if (!loaded) {
       if (widgetVisibility.pomodoro) cols.col1.push('widget-pomodoro');
       if (widgetVisibility.notes) (cols.col2 || cols.col1).push('widget-notes');
       if (widgetVisibility.calendar) (cols.col3 || cols.col1).push('widget-calendar');
+
+      newCategories.forEach(cat => {
+        const itemKey = toColItemId(cat.id);
+        if (!existing.has(itemKey)) {
+          const targetCol = (addingCategoryCol && cols[addingCategoryCol])
+            ? addingCategoryCol
+            : Object.keys(cols).sort((a, b) => cols[a].length - cols[b].length)[0];
+          cols[targetCol].push(itemKey);
+          existing.add(itemKey);
+        }
+      });
     } else {
-      const existing = new Set<string>();
-      Object.values(cols).forEach(colItems => colItems.forEach(item => existing.add(item)));
-      
       // Auto-add only newly created categories, NOT all available categories
       newCategories.forEach(cat => {
-        if (!existing.has(`cat-${cat.id}`)) {
-          const shortestCol = Object.keys(cols).sort((a, b) => cols[a].length - cols[b].length)[0];
-          cols[shortestCol].push(`cat-${cat.id}`);
-          existing.add(`cat-${cat.id}`);
+        const itemKey = toColItemId(cat.id);
+        if (!existing.has(itemKey)) {
+          const targetCol = (addingCategoryCol && cols[addingCategoryCol])
+            ? addingCategoryCol
+            : Object.keys(cols).sort((a, b) => cols[a].length - cols[b].length)[0];
+          cols[targetCol].push(itemKey);
+          existing.add(itemKey);
         }
       });
       
-      const validCategoryIds = new Set(availableCategories.map(c => `cat-${c.id}`));
+      const validCategoryIds = new Set<string>();
+      availableCategories.forEach(c => {
+        validCategoryIds.add(c.id);
+        validCategoryIds.add(toColItemId(c.id));
+      });
       const seenItems = new Set<string>();
       
       Object.keys(cols).forEach(colId => {
@@ -239,9 +258,8 @@ export default function DraggableDashboard({
           if (seenItems.has(id)) return false; // Deduplicate!
           seenItems.add(id);
           
-          if (id.startsWith('cat-')) return validCategoryIds.has(id);
           if (id.startsWith('widget-')) return widgetVisibility[id.replace('widget-', '') as keyof typeof widgetVisibility];
-          return true;
+          return validCategoryIds.has(id);
         });
       });
       
@@ -358,9 +376,8 @@ export default function DraggableDashboard({
   };
 
   const renderItem = (id: string, dragProps?: any) => {
-    if (id.startsWith('cat-')) {
-      const catId = id.replace('cat-', '');
-      const cat = categories.find(c => c.id === catId);
+    if (id.startsWith('cat-') || categories.some(c => c.id === id)) {
+      const cat = categories.find(c => c.id === id || `cat-${c.id}` === id || c.id === id.replace(/^cat-/, ''));
       if (!cat) return null;
       
       const catBookmarks = pageBookmarks.filter(bm => bm.category === cat.id || bm.category === cat.name);
