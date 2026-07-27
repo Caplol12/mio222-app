@@ -176,6 +176,7 @@ export default function DraggableDashboard({
     col3: []
   });
   const prevCategoriesRef = React.useRef(categories);
+  const lastLoadedPageRef = React.useRef(activePage);
 
   useEffect(() => {
     const availableCategories = categories.filter(c => c.id !== "all" && c.id !== "favs" && c.id !== "read-later");
@@ -268,12 +269,15 @@ export default function DraggableDashboard({
     });
 
     setColumns(cols);
+    lastLoadedPageRef.current = activePage;
   }, [activePage, categories, widgetVisibility, settings.columns]);
   
   // Save to local storage on change
   useEffect(() => {
-    if (Object.values(columns).some(col => Array.isArray(col) && col.length > 0)) {
-      localStorage.setItem(`dashboard_layout_${activePage}`, JSON.stringify(columns));
+    if (lastLoadedPageRef.current === activePage) {
+      if (Object.values(columns).some(col => Array.isArray(col) && col.length > 0)) {
+        localStorage.setItem(`dashboard_layout_${activePage}`, JSON.stringify(columns));
+      }
     }
   }, [activePage, columns]);
 
