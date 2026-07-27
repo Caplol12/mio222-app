@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Bookmark, CategoryItem } from "../types";
 import { 
   DndContext, 
@@ -25,43 +24,6 @@ import CalendarWidget from "./CalendarWidget";
 import PomodoroWidget from "./PomodoroWidget";
 import NotesWidget from "./NotesWidget";
 
-// Portal-based dropdown menu that escapes parent stacking contexts
-// (backdrop-filter on parent creates a new stacking context that traps z-index)
-function PortalMenu({ anchorRect, children, className, dir }: { 
-  anchorRect: DOMRect | null, 
-  children: React.ReactNode, 
-  className?: string,
-  dir?: string
-}) {
-  if (!anchorRect) return null;
-
-  const menuWidth = 192; // w-48 = 12rem = 192px
-  const menuHeight = 200; // approximate
-  let left = anchorRect.right - menuWidth;
-  let top = anchorRect.bottom + 4;
-  // Clamp to viewport
-  if (left < 8) left = 8;
-  if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
-  if (top + menuHeight > window.innerHeight - 8) top = anchorRect.top - menuHeight - 4;
-
-  return createPortal(
-    <div 
-      className={className} 
-      dir={dir}
-      style={{ 
-        position: 'fixed', 
-        top, 
-        left, 
-        zIndex: 99999 
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {children}
-    </div>,
-    document.body
-  );
-}
-
 // Sortable item wrapper
 function SortableItem({ id, isActive, children }: { id: string, isActive?: boolean, key?: React.Key, children: (dragProps: any) => React.ReactNode }) {
   const {
@@ -77,11 +39,11 @@ function SortableItem({ id, isActive, children }: { id: string, isActive?: boole
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    zIndex: (isDragging || isActive) ? 50 : undefined,
+    zIndex: (isDragging || isActive) ? 999 : undefined,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group/item w-full min-w-0">
+    <div ref={setNodeRef} style={style} className={`relative group/item w-full min-w-0 ${isActive ? 'z-[999]' : ''}`}>
       {children({ attributes, listeners })}
     </div>
   );
@@ -160,16 +122,12 @@ export default function DraggableDashboard({
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [quickAddInput, setQuickAddInput] = useState<string | null>(null);
-  
-  // Store the anchor rect (button position) at click time for portal positioning
-  const [menuAnchorRect, setMenuAnchorRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenMenuId(null);
       setWidgetMenuId(null);
       setInlineEditId(null);
-      setMenuAnchorRect(null);
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
@@ -426,11 +384,13 @@ export default function DraggableDashboard({
       
       const isSelected = selectedCatId === cat.id;
 
+      const isCatActive = openMenuId === `cat-${cat.id}` || catBookmarks.some(bm => bm.id === openMenuId || bm.id === inlineEditId);
+
       return (
         <div 
-          style={getGlassStyle()} 
+          style={{ ...getGlassStyle(), ...(isCatActive ? { zIndex: 999 } : {}) }} 
           onClick={() => setSelectedCatId(cat.id)}
-          className={`border rounded-[20px] flex flex-col shadow-sm mb-4 ${Object.keys(columns).length <= 4 ? 'p-1.5 md:p-3' : 'p-3'} transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${isSelected ? 'ring-2 ring-blue-500 border-blue-500/80 shadow-md shadow-blue-500/10' : 'border-white/40 dark:border-white/10'}`}
+          className={`border rounded-[20px] flex flex-col shadow-sm mb-4 ${Object.keys(columns).length <= 4 ? 'p-1.5 md:p-3' : 'p-3'} transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${isSelected ? 'ring-2 ring-blue-500 border-blue-500/80 shadow-md shadow-blue-500/10' : 'border-white/40 dark:border-white/10'} ${isCatActive ? 'relative z-[999]' : ''}`}
           tabIndex={0}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -511,62 +471,63 @@ export default function DraggableDashboard({
               </button>
               
               {/* Category 3-dot Menu */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuAnchorRect(e.currentTarget.getBoundingClientRect());
-                  setOpenMenuId(openMenuId === `cat-${cat.id}` ? null : `cat-${cat.id}`);
-                  setInlineEditId(null);
-                }}
-                className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors data-[open=true]:bg-black/5 dark:data-[open=true]:bg-white/10"
-                data-open={openMenuId === `cat-${cat.id}`}
-              >
-                <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-slate-300" />
-              </button>
-              
-              {openMenuId === `cat-${cat.id}` && (
-                <PortalMenu anchorRect={menuAnchorRect} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(null);
-                      const newName = window.prompt("نام جدید پوشه را وارد کنید:", cat.name);
-                      if (newName && newName.trim() !== "") {
-                        onEditCategory?.(cat.id, newName.trim());
-                      }
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
-                  >
-                    <span className="font-serif italic text-[14px] w-3.5 h-3.5 flex items-center justify-center opacity-70">T</span>
-                    <span>تغییر نام</span>
-                  </button>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(null);
-                      catBookmarks.forEach(bm => {
-                        window.open(bm.url, "_blank");
-                      });
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                    <span>باز کردن همه لینک‌ها</span>
-                  </button>
-                  <div className="h-px bg-slate-900/10 dark:bg-white/10 my-1"></div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setOpenMenuId(null);
-                      onDeleteCategory?.(cat.id);
-                    }}
-                    className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-red-500/10 text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 opacity-70" />
-                    <span>حذف پوشه</span>
-                  </button>
-                </PortalMenu>
-              )}
+              <div className="relative">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpenMenuId(openMenuId === `cat-${cat.id}` ? null : `cat-${cat.id}`);
+                    setInlineEditId(null);
+                  }}
+                  className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors data-[open=true]:bg-black/5 dark:data-[open=true]:bg-white/10"
+                  data-open={openMenuId === `cat-${cat.id}`}
+                >
+                  <MoreHorizontal className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+                </button>
+                
+                {openMenuId === `cat-${cat.id}` && (
+                  <div onClick={e => e.stopPropagation()} className="absolute right-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(null);
+                        const newName = window.prompt("نام جدید پوشه را وارد کنید:", cat.name);
+                        if (newName && newName.trim() !== "") {
+                          onEditCategory?.(cat.id, newName.trim());
+                        }
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <span className="font-serif italic text-[14px] w-3.5 h-3.5 flex items-center justify-center opacity-70">T</span>
+                      <span>تغییر نام</span>
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(null);
+                        catBookmarks.forEach(bm => {
+                          window.open(bm.url, "_blank");
+                        });
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                      <span>باز کردن همه لینک‌ها</span>
+                    </button>
+                    <div className="h-px bg-slate-900/10 dark:bg-white/10 my-1"></div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(null);
+                        onDeleteCategory?.(cat.id);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-red-500/10 text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 opacity-70" />
+                      <span>حذف پوشه</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           {quickAddInput === cat.id && (
@@ -631,7 +592,6 @@ export default function DraggableDashboard({
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMenuAnchorRect(e.currentTarget.getBoundingClientRect());
                       setOpenMenuId(openMenuId === bm.id ? null : bm.id);
                       setInlineEditId(null);
                     }}
@@ -642,7 +602,7 @@ export default function DraggableDashboard({
                   </button>
                   
                   {openMenuId === bm.id && (
-                    <PortalMenu anchorRect={menuAnchorRect} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                    <div onClick={e => e.stopPropagation()} className="absolute right-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -680,12 +640,12 @@ export default function DraggableDashboard({
                         <Trash2 className="w-3.5 h-3.5 opacity-70" />
                         <span>Delete</span>
                       </button>
-                    </PortalMenu>
+                    </div>
                   )}
                   
                   {/* Inline Edit Popover */}
                   {inlineEditId === bm.id && (
-                    <PortalMenu anchorRect={menuAnchorRect} className="w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr">
+                    <div className="absolute right-0 top-full mt-2 z-[9999] w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr" onClick={e => e.stopPropagation()}>
                       <input 
                         type="text" 
                         value={editUrl}
@@ -722,7 +682,7 @@ export default function DraggableDashboard({
                           Save
                         </button>
                       </div>
-                    </PortalMenu>
+                    </div>
                   )}
                 </div>
               </div>
