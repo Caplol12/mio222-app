@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Bookmark, CategoryItem } from "../types";
 import { 
   DndContext, 
@@ -24,6 +25,51 @@ import CalendarWidget from "./CalendarWidget";
 import PomodoroWidget from "./PomodoroWidget";
 import NotesWidget from "./NotesWidget";
 
+// Portal-based dropdown menu that escapes parent stacking contexts
+// (backdrop-filter on parent creates a new stacking context that traps z-index)
+function PortalMenu({ anchorRef, children, className, dir }: { 
+  anchorRef: React.RefObject<HTMLElement>, 
+  children: React.ReactNode, 
+  className?: string,
+  dir?: string
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      const menuWidth = 192; // w-48 = 12rem = 192px
+      const menuHeight = 200; // approximate
+      let left = rect.right - menuWidth;
+      let top = rect.bottom + 4;
+      // Clamp to viewport
+      if (left < 8) left = 8;
+      if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+      if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 4;
+      setPos({ top, left });
+    }
+  }, [anchorRef.current]);
+
+  if (!pos) return null;
+
+  return createPortal(
+    <div 
+      className={className} 
+      dir={dir}
+      style={{ 
+        position: 'fixed', 
+        top: pos.top, 
+        left: pos.left, 
+        zIndex: 99999 
+      }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 // Sortable item wrapper
 function SortableItem({ id, isActive, children }: { id: string, isActive?: boolean, key?: React.Key, children: (dragProps: any) => React.ReactNode }) {
   const {
@@ -39,7 +85,7 @@ function SortableItem({ id, isActive, children }: { id: string, isActive?: boole
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    zIndex: (isDragging || isActive) ? 9999 : undefined,
+    zIndex: (isDragging || isActive) ? 50 : undefined,
   };
 
   return (
@@ -122,6 +168,11 @@ export default function DraggableDashboard({
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [quickAddInput, setQuickAddInput] = useState<string | null>(null);
+  
+  // Refs for portal menu anchoring
+  const bookmarkMenuRef = useRef<HTMLElement>(null);
+  const categoryMenuRef = useRef<HTMLElement>(null);
+  const inlineEditRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -386,7 +437,7 @@ export default function DraggableDashboard({
 
       return (
         <div 
-          style={{ ...getGlassStyle(), ...(openMenuId === `cat-${cat.id}` || catBookmarks.some(bm => bm.id === openMenuId) || catBookmarks.some(bm => bm.id === inlineEditId) ? { zIndex: 9999, overflow: 'visible' } : {}) }} 
+          style={getGlassStyle()} 
           onClick={() => setSelectedCatId(cat.id)}
           className={`border rounded-[20px] flex flex-col shadow-sm mb-4 ${Object.keys(columns).length <= 4 ? 'p-1.5 md:p-3' : 'p-3'} transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${isSelected ? 'ring-2 ring-blue-500 border-blue-500/80 shadow-md shadow-blue-500/10' : 'border-white/40 dark:border-white/10'}`}
           tabIndex={0}
@@ -470,6 +521,7 @@ export default function DraggableDashboard({
               
               {/* Category 3-dot Menu */}
               <button 
+                ref={categoryMenuRef}
                 onClick={(e) => {
                   e.stopPropagation();
                   setOpenMenuId(openMenuId === `cat-${cat.id}` ? null : `cat-${cat.id}`);
@@ -482,7 +534,7 @@ export default function DraggableDashboard({
               </button>
               
               {openMenuId === `cat-${cat.id}` && (
-                <div onClick={e => e.stopPropagation()} className="absolute right-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                <PortalMenu anchorRef={categoryMenuRef} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -522,7 +574,7 @@ export default function DraggableDashboard({
                     <Trash2 className="w-3.5 h-3.5 opacity-70" />
                     <span>حذف پوشه</span>
                   </button>
-                </div>
+                </PortalMenu>
               )}
             </div>
           </div>
@@ -565,7 +617,7 @@ export default function DraggableDashboard({
           )}
           <div className="flex flex-col gap-0.5">
             {catBookmarks.map(bm => (
-              <div key={bm.id} className="relative group/bm flex items-center justify-between px-1 sm:px-2 py-1 min-w-0 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/5 transition-colors w-full" style={{ zIndex: openMenuId === bm.id || inlineEditId === bm.id ? 9999 : undefined }} dir="ltr">
+              <div key={bm.id} className="relative group/bm flex items-center justify-between px-1 sm:px-2 py-1 min-w-0 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/5 transition-colors w-full" dir="ltr">
                 <button 
                   onClick={() => window.open(bm.url, "_blank")}
                   className={`flex items-center ${Object.keys(columns).length <= 4 ? 'gap-1 md:gap-1.5' : 'gap-2'} text-slate-700 dark:text-slate-200 text-sm w-full text-left overflow-hidden min-w-0`}
@@ -584,8 +636,9 @@ export default function DraggableDashboard({
                 </button>
                 
                 {/* 3-dot menu button */}
-                <div className="relative flex-shrink-0 ml-1 z-10">
+                <div className="relative flex-shrink-0 ml-1">
                   <button 
+                    ref={bookmarkMenuRef}
                     onClick={(e) => {
                       e.stopPropagation();
                       setOpenMenuId(openMenuId === bm.id ? null : bm.id);
@@ -598,93 +651,87 @@ export default function DraggableDashboard({
                   </button>
                   
                   {openMenuId === bm.id && (
-                    <>
-                      
-                      <div onClick={e => e.stopPropagation()} className="absolute right-0 top-full mt-1 z-[9999] w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(null);
-                            window.open(bm.url, "_blank");
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                          <span>Open</span>
-                        </button>
-                        <div className="h-px bg-slate-900/10 dark:bg-white/10 my-1"></div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(null);
-                            setInlineEditId(bm.id);
-                            setEditUrl(bm.url);
-                            setEditTitle(bm.title || bm.domain);
-                            setEditDesc(bm.description || '');
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 opacity-70" />
-                          <span>Edit</span>
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenMenuId(null);
-                            onDeleteBookmark?.(bm.id);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-red-500/10 text-red-600 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 opacity-70" />
-                          <span>Delete</span>
-                        </button>
-                      </div>
-                    </>
+                    <PortalMenu anchorRef={bookmarkMenuRef} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          window.open(bm.url, "_blank");
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                        <span>Open</span>
+                      </button>
+                      <div className="h-px bg-slate-900/10 dark:bg-white/10 my-1"></div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          setInlineEditId(bm.id);
+                          setEditUrl(bm.url);
+                          setEditTitle(bm.title || bm.domain);
+                          setEditDesc(bm.description || '');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-slate-900/5 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200 transition-colors"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 opacity-70" />
+                        <span>Edit</span>
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(null);
+                          onDeleteBookmark?.(bm.id);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 hover:bg-red-500/10 text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 opacity-70" />
+                        <span>Delete</span>
+                      </button>
+                    </PortalMenu>
                   )}
                   
                   {/* Inline Edit Popover */}
                   {inlineEditId === bm.id && (
-                    <>
-                      
-                      <div className="absolute right-0 top-full mt-2 z-[9999] w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr" onClick={e => e.stopPropagation()}>
-                        <input 
-                          type="text" 
-                          value={editUrl}
-                          onChange={e => setEditUrl(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-800 dark:text-slate-200"
-                        />
-                        <input 
-                          type="text" 
-                          value={editTitle}
-                          onChange={e => setEditTitle(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-black/20 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-800 dark:text-slate-200"
-                        />
-                        <input 
-                          type="text" 
-                          value={editDesc}
-                          onChange={e => setEditDesc(e.target.value)}
-                          placeholder="Description (optional)"
-                          className="w-full bg-slate-50/50 dark:bg-black/10 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-600 dark:text-slate-400"
-                        />
-                        <div className={`flex items-center ${Object.keys(columns).length <= 4 ? 'gap-1 md:gap-1.5' : 'gap-2'} mt-1`}>
-                          <button 
-                            onClick={() => setInlineEditId(null)}
-                            className="flex-1 py-1.5 bg-slate-900/5 dark:bg-white/5 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-lg text-[13px] font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button 
-                            onClick={() => {
-                              onUpdateBookmark?.(bm.id, { url: editUrl, title: editTitle, description: editDesc });
-                              setInlineEditId(null);
-                            }}
-                            className="flex-1 py-1.5 bg-[#2A93D5] hover:brightness-110 text-white rounded-lg text-[13px] font-semibold transition-colors"
-                          >
-                            Save
-                          </button>
-                        </div>
+                    <PortalMenu anchorRef={bookmarkMenuRef} className="w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr">
+                      <input 
+                        type="text" 
+                        value={editUrl}
+                        onChange={e => setEditUrl(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-800 dark:text-slate-200"
+                      />
+                      <input 
+                        type="text" 
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-black/20 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-800 dark:text-slate-200"
+                      />
+                      <input 
+                        type="text" 
+                        value={editDesc}
+                        onChange={e => setEditDesc(e.target.value)}
+                        placeholder="Description (optional)"
+                        className="w-full bg-slate-50/50 dark:bg-black/10 border border-slate-900/10 dark:border-white/10 rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-slate-600 dark:text-slate-400"
+                      />
+                      <div className={`flex items-center ${Object.keys(columns).length <= 4 ? 'gap-1 md:gap-1.5' : 'gap-2'} mt-1`}>
+                        <button 
+                          onClick={() => setInlineEditId(null)}
+                          className="flex-1 py-1.5 bg-slate-900/5 dark:bg-white/5 hover:bg-slate-900/10 dark:hover:bg-white/10 rounded-lg text-[13px] font-semibold text-slate-700 dark:text-slate-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={() => {
+                            onUpdateBookmark?.(bm.id, { url: editUrl, title: editTitle, description: editDesc });
+                            setInlineEditId(null);
+                          }}
+                          className="flex-1 py-1.5 bg-[#2A93D5] hover:brightness-110 text-white rounded-lg text-[13px] font-semibold transition-colors"
+                        >
+                          Save
+                        </button>
                       </div>
-                    </>
+                    </PortalMenu>
                   )}
                 </div>
               </div>
@@ -721,7 +768,7 @@ export default function DraggableDashboard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className={`w-full pb-4 ${Object.keys(columns).length > 4 ? 'overflow-x-auto overflow-y-visible' : 'overflow-visible'}`}>
+      <div className={`w-full pb-4 ${Object.keys(columns).length > 4 ? 'overflow-x-auto' : 'overflow-x-hidden'}`}>
         <div 
           className="grid mt-8 pb-12 min-h-[500px] px-2 w-full gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--desktop-cols)]"
           style={{ '--desktop-cols': `repeat(${Object.keys(columns).length || 1}, minmax(${Object.keys(columns).length > 4 ? '260px' : '0'}, 1fr))` } as any}
