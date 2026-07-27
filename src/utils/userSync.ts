@@ -6,11 +6,18 @@ export interface UserRecord {
   picture?: string;
   provider?: string;
   isPremium?: boolean;
+  isAdmin?: boolean;
   createdAt?: string;
   status?: 'active' | 'disabled';
 }
 
-const CLOUD_DB_URL = 'https://jsonblob.com/api/jsonBlob/019fa48c-8aad-751b-9b24-bc8e4461195e';
+const getAuthHeaders = (): Record<string, string> => {
+  const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+};
 
 export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
   const mergedList: UserRecord[] = [];
@@ -32,29 +39,19 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
         id: mergedList[existingIdx].id || u.id,
         name: (u.name && u.name !== 'کاربر مهمان') ? u.name : (mergedList[existingIdx].name || u.name),
         email: (u.email && !u.email.includes('@local.app')) ? u.email : (mergedList[existingIdx].email || u.email),
-        isPremium: u.isPremium !== undefined ? u.isPremium : mergedList[existingIdx].isPremium
+        isPremium: u.isPremium !== undefined ? u.isPremium : mergedList[existingIdx].isPremium,
+        status: u.status || mergedList[existingIdx].status || 'active'
       };
     } else {
-      mergedList.push({ ...u });
+      mergedList.push({ ...u, status: u.status || 'active' });
     }
   };
 
-  // 1. Fetch from shared Cloud Database (highest priority across devices)
+  // 1. Try local server Admin API (authenticated)
   try {
-    const res = await fetch(CLOUD_DB_URL);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.users)) {
-        data.users.forEach(addOrMergeUser);
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to fetch from shared cloud user database:', err);
-  }
-
-  // 2. Try local server API
-  try {
-    const res = await fetch('/api/admin/users');
+    const res = await fetch('/api/admin/users', {
+      headers: getAuthHeaders()
+    });
     const contentType = res.headers.get('content-type') || '';
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
@@ -62,9 +59,11 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
         data.users.forEach(addOrMergeUser);
       }
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to fetch users from server admin API:', err);
+  }
 
-  // 3. Merge from localStorage (admin_users, mock_users_db, current user)
+  // 2. Merge from localStorage fallback (admin_users, mock_users_db, current user)
   try {
     const adminUsers: UserRecord[] = JSON.parse(localStorage.getItem('admin_users') || '[]');
     const mockUsers: UserRecord[] = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
@@ -86,121 +85,63 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
       u.numericId = maxId;
     }
     if (u.isPremium === undefined) u.isPremium = false;
+    if (!u.status) u.status = 'active';
   });
 
   return mergedList;
 };
 
 export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<UserRecord> => {
-  const currentUsers = await fetchAllSharedUsers();
-  
-  const existingIdx = currentUsers.findIndex(u => 
-    u.id === targetUser.id || 
-    (u.numericId && targetUser.numericId && u.numericId === targetUser.numericId) ||
-    (u.email && targetUser.email && u.email.toLowerCase() === targetUser.email.toLowerCase())
-  );
+  // Sync to local Node Express server
+  const res = await fetch('/api/users/sync', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(targetUser)
+  });
 
-  let finalUser: UserRecord;
-
-  if (existingIdx >= 0) {
-    const existing = currentUsers[existingIdx];
-    currentUsers[existingIdx] = {
-      ...existing,
-      ...targetUser,
-      numericId: existing.numericId || targetUser.numericId,
-      id: existing.id || targetUser.id,
-      name: targetUser.name || existing.name,
-      email: targetUser.email || existing.email,
-      provider: targetUser.provider || existing.provider,
-      isPremium: targetUser.isPremium !== undefined ? targetUser.isPremium : existing.isPremium
-    };
-    finalUser = currentUsers[existingIdx];
-  } else {
-    let maxId = 1000;
-    currentUsers.forEach(u => {
-      if (u.numericId && u.numericId > maxId) maxId = u.numericId;
-    });
-    finalUser = {
-      ...targetUser,
-      numericId: targetUser.numericId || (maxId + 1),
-      isPremium: targetUser.isPremium || false,
-      createdAt: targetUser.createdAt || new Date().toISOString()
-    };
-    currentUsers.push(finalUser);
+  if (res.status === 409) {
+    throw new Error('کاربری با این ایمیل از قبل وجود دارد');
   }
 
-  // Update localStorage
-  try {
-    localStorage.setItem('admin_users', JSON.stringify(currentUsers));
-    const currentUser: UserRecord | null = JSON.parse(localStorage.getItem('user') || 'null');
-    if (currentUser && (currentUser.id === finalUser.id || currentUser.email === finalUser.email)) {
-      localStorage.setItem('user', JSON.stringify({ ...currentUser, ...finalUser }));
+  if (res.ok) {
+    const data = await res.json();
+    if (data && data.user) {
+      return data.user;
     }
-  } catch {}
-
-  // Update Shared Cloud DB (Vercel & multi-device sync)
-  try {
-    await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: currentUsers })
-    });
-  } catch (err) {
-    console.warn('Failed to update shared cloud user DB:', err);
   }
 
-  // Also sync to local Node Express server if available
-  try {
-    await fetch('/api/users/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(finalUser)
-    });
-  } catch {}
-
-  return finalUser;
+  return targetUser;
 };
 
 export const updateSharedUserPremiumStatus = async (idOrNumericId: string | number, makePremium: boolean): Promise<UserRecord[]> => {
-  const currentUsers = await fetchAllSharedUsers();
   const strId = String(idOrNumericId).trim();
 
-  const updatedUsers = currentUsers.map(u => {
-    if (u.id === strId || String(u.numericId) === strId) {
-      return { ...u, isPremium: makePremium };
-    }
-    return u;
-  });
-
-  // Update localStorage
-  try {
-    localStorage.setItem('admin_users', JSON.stringify(updatedUsers));
-    const currentUser: UserRecord | null = JSON.parse(localStorage.getItem('user') || 'null');
-    if (currentUser && (currentUser.id === strId || String(currentUser.numericId) === strId)) {
-      currentUser.isPremium = makePremium;
-      localStorage.setItem('user', JSON.stringify(currentUser));
-    }
-  } catch {}
-
-  // Update Shared Cloud DB
-  try {
-    await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: updatedUsers })
-    });
-  } catch (err) {
-    console.warn('Failed to update shared cloud user DB:', err);
-  }
-
-  // Update local Node server if available
   try {
     await fetch(`/api/admin/users/${strId}/premium`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ isPremium: makePremium })
     });
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to update premium status on server:', err);
+  }
 
-  return updatedUsers;
+  return fetchAllSharedUsers();
 };
+
+export const updateSharedUserStatus = async (idOrNumericId: string | number, status: 'active' | 'disabled'): Promise<UserRecord[]> => {
+  const strId = String(idOrNumericId).trim();
+
+  try {
+    await fetch(`/api/admin/users/${strId}/status`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status })
+    });
+  } catch (err) {
+    console.warn('Failed to update status on server:', err);
+  }
+
+  return fetchAllSharedUsers();
+};
+

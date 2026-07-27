@@ -12,6 +12,8 @@ export interface DBUser {
   picture?: string;
   provider: string;
   isPremium: boolean;
+  isAdmin?: boolean;
+  status?: 'active' | 'disabled';
   createdAt: string;
 }
 
@@ -26,47 +28,6 @@ export const getNextNumericId = (): number => {
     return num > max ? num : max;
   }, 1000);
   return maxId + 1;
-};
-
-const CLOUD_DB_URL = 'https://jsonblob.com/api/jsonBlob/019fa48c-8aad-751b-9b24-bc8e4461195e';
-
-export const syncWithCloud = async () => {
-  try {
-    const res = await fetch(CLOUD_DB_URL);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && Array.isArray(data.users)) {
-        let updated = false;
-        data.users.forEach((cloudUser: DBUser) => {
-          if (!cloudUser || !cloudUser.id) return;
-          const idx = db.users.findIndex(u => u.id === cloudUser.id || (u.numericId && u.numericId === cloudUser.numericId));
-          if (idx >= 0) {
-            db.users[idx] = { ...db.users[idx], ...cloudUser };
-          } else {
-            db.users.push(cloudUser);
-            updated = true;
-          }
-        });
-        if (updated) {
-          saveDB();
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("Could not sync with cloud DB on server", e);
-  }
-};
-
-export const pushToCloud = async () => {
-  try {
-    await fetch(CLOUD_DB_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: db.users })
-    });
-  } catch (e) {
-    console.warn("Could not push DB to cloud", e);
-  }
 };
 
 export const initDB = () => {
@@ -89,6 +50,14 @@ export const initDB = () => {
           u.isPremium = false;
           updated = true;
         }
+        if (!u.status) {
+          u.status = 'active';
+          updated = true;
+        }
+        if (u.email && u.email.toLowerCase() === 'montill22k@gmail.com' && !u.isAdmin) {
+          u.isAdmin = true;
+          updated = true;
+        }
       });
       if (updated) {
         saveDB();
@@ -99,14 +68,10 @@ export const initDB = () => {
   } else {
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
   }
-
-  // Background sync with shared cloud DB
-  syncWithCloud();
 };
 
 export const saveDB = () => {
   fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-  pushToCloud();
 };
 
 export const getAllUsers = (): DBUser[] => {
@@ -120,10 +85,10 @@ export const findUserById = (idOrNumericId: string | number): DBUser | undefined
 
 export const findUserByEmail = (email: string): DBUser | undefined => {
   if (!email) return undefined;
-  return db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  return db.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 };
 
-export const syncUserRecord = (userData: { id?: string; numericId?: number; name?: string; email?: string; provider?: string }): DBUser => {
+export const syncUserRecord = (userData: { id?: string; numericId?: number; name?: string; email?: string; provider?: string; isPremium?: boolean }): DBUser => {
   let user: DBUser | undefined;
 
   if (userData.id) {
@@ -141,20 +106,26 @@ export const syncUserRecord = (userData: { id?: string; numericId?: number; name
     if (userData.email && userData.email !== user.email) user.email = userData.email;
     if (userData.provider && userData.provider !== user.provider) user.provider = userData.provider;
     if (!user.numericId) user.numericId = userData.numericId || getNextNumericId();
-    if (user.isPremium === undefined) user.isPremium = false;
+    if (userData.isPremium !== undefined) user.isPremium = userData.isPremium;
+    if (!user.status) user.status = 'active';
+    if (user.email && user.email.toLowerCase() === 'montill22k@gmail.com') user.isAdmin = true;
     saveDB();
     return user;
   }
 
   const numericId = getNextNumericId();
+  const email = userData.email || `guest_${numericId}@local.app`;
+  const isAdminUser = email.toLowerCase() === 'montill22k@gmail.com';
   const newUser: DBUser = {
     id: userData.id || `user_${numericId}`,
     numericId,
     name: userData.name || (userData.email ? userData.email.split('@')[0] : `کاربر ${numericId}`),
-    email: userData.email || `guest_${numericId}@local.app`,
+    email,
     picture: '',
     provider: userData.provider || 'guest',
-    isPremium: false,
+    isPremium: !!userData.isPremium,
+    isAdmin: isAdminUser,
+    status: 'active',
     createdAt: new Date().toISOString()
   };
 
@@ -167,6 +138,14 @@ export const updateUserPremiumStatus = (idOrNumericId: string | number, isPremiu
   const user = findUserById(idOrNumericId);
   if (!user) return null;
   user.isPremium = isPremium;
+  saveDB();
+  return user;
+};
+
+export const updateUserStatus = (idOrNumericId: string | number, status: 'active' | 'disabled'): DBUser | null => {
+  const user = findUserById(idOrNumericId);
+  if (!user) return null;
+  user.status = status;
   saveDB();
   return user;
 };
@@ -188,11 +167,12 @@ export const getDB = () => ({
       const email = params[2];
       
       const numericId = getNextNumericId();
+      const isAdminUser = email.toLowerCase() === 'montill22k@gmail.com';
       let newUser: DBUser;
       if (params.length === 5) {
-        newUser = { id, numericId, name, email, picture: params[3], provider: params[4], isPremium: false, createdAt: new Date().toISOString() };
+        newUser = { id, numericId, name, email, picture: params[3], provider: params[4], isPremium: false, isAdmin: isAdminUser, status: 'active', createdAt: new Date().toISOString() };
       } else {
-        newUser = { id, numericId, name, email, password: params[3], picture: '', provider: 'local', isPremium: false, createdAt: new Date().toISOString() };
+        newUser = { id, numericId, name, email, password: params[3], picture: '', provider: 'local', isPremium: false, isAdmin: isAdminUser, status: 'active', createdAt: new Date().toISOString() };
       }
       
       db.users.push(newUser);
@@ -203,4 +183,5 @@ export const getDB = () => ({
     }
   }
 });
+
 

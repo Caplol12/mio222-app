@@ -2,9 +2,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { isAdmin } from '../utils/admin';
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, CheckCircle2, XCircle, FileCode, Crown, Star } from 'lucide-react';
+import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, XCircle, FileCode, Crown, UserCheck, UserX } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
-import { fetchAllSharedUsers, updateSharedUserPremiumStatus, syncUserToSharedDatabase, UserRecord } from '../utils/userSync';
+import { fetchAllSharedUsers, updateSharedUserPremiumStatus, updateSharedUserStatus, syncUserToSharedDatabase, UserRecord } from '../utils/userSync';
 
 // Types
 type User = UserRecord;
@@ -18,10 +18,7 @@ export default function AdminPanel() {
   const { user } = useAuth();
   const { getGlassStyle } = useGlassStyle();
 
-  if (!isAdmin(user?.email)) {
-    return <Navigate to="/" replace />;
-  }
-
+  // --- All Hooks defined at top-level ---
   const [activeTab, setActiveTab] = useState<'users' | 'keys' | 'settings'>('users');
 
   // --- API Keys State ---
@@ -41,11 +38,19 @@ export default function AdminPanel() {
     chatbotEnabled: true,
   });
 
+  // Add User State
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
+  const [addName, setAddName] = useState('');
+  const [addEmail, setAddEmail] = useState('');
+  const [addIsPremium, setAddIsPremium] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+
   const fetchUsers = async () => {
     setIsFetchingUsers(true);
     try {
       const allUsers = await fetchAllSharedUsers();
       setUsers(allUsers);
+      setSelectedUser(prev => prev ? (allUsers.find(u => u.id === prev.id || (u.numericId && u.numericId === prev.numericId)) ?? prev) : null);
     } catch (err) {
       console.warn('Failed to fetch shared users:', err);
     } finally {
@@ -86,12 +91,6 @@ export default function AdminPanel() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'users') {
-      fetchUsers();
-    }
-  }, [activeTab]);
-
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
@@ -117,15 +116,19 @@ export default function AdminPanel() {
 
   const handleExportEnv = async () => {
     try {
+      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
       const res = await fetch('/api/admin/export-env', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ keys: apiKeys })
       });
       if (res.ok) {
         showToast('کلیدها به فایل .env منتقل شدند');
       } else {
-        showToast('خطا در انتقال کلیدها');
+        showToast('خطا در انتقال کلیدها (دسترسی غیرمجاز)');
       }
     } catch {
       showToast('خطا در ارتباط با سرور');
@@ -137,26 +140,25 @@ export default function AdminPanel() {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     const matchNumericId = u.numericId ? u.numericId.toString().includes(q) : false;
-    const matchId = u.id.toLowerCase().includes(q);
-    const matchName = u.name.toLowerCase().includes(q);
-    const matchEmail = u.email.toLowerCase().includes(q);
+    const matchId = (u.id || '').toLowerCase().includes(q);
+    const matchName = (u.name || '').toLowerCase().includes(q);
+    const matchEmail = (u.email || '').toLowerCase().includes(q);
     return matchNumericId || matchId || matchName || matchEmail;
   });
 
-  const toggleUserStatus = (userId: string) => {
-    const newUsers = users.map(u => {
-      if (u.id === userId) {
-        return { ...u, status: (u.status === 'active' ? 'disabled' : 'active') as any } as User;
+  const toggleUserStatus = async (targetUser: User) => {
+    const newStatus = targetUser.status === 'disabled' ? 'active' : 'disabled';
+    const targetId = targetUser.numericId || targetUser.id;
+    try {
+      const updatedList = await updateSharedUserStatus(targetId, newStatus);
+      setUsers(updatedList);
+      if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
+        setSelectedUser(updatedList.find(u => u.id === targetUser.id || u.numericId === targetUser.numericId) || null);
       }
-      return u;
-    });
-    setUsers(newUsers);
-    localStorage.setItem('admin_users', JSON.stringify(newUsers));
-    
-    if (selectedUser && selectedUser.id === userId) {
-      setSelectedUser(newUsers.find(u => u.id === userId) || null);
+      showToast(`وضعیت کاربر به ${newStatus === 'active' ? 'فعال' : 'غیرفعال'} تغییر یافت`);
+    } catch (err) {
+      showToast('خطا در تغییر وضعیت کاربر');
     }
-    showToast('وضعیت کاربر تغییر کرد');
   };
 
   const handleTogglePremium = async (targetUser: User, makePremium: boolean) => {
@@ -180,13 +182,6 @@ export default function AdminPanel() {
     showToast('تنظیمات ذخیره شد');
   };
 
-  // Add User State
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addEmail, setAddEmail] = useState('');
-  const [addIsPremium, setAddIsPremium] = useState(false);
-  const [isAddingUser, setIsAddingUser] = useState(false);
-
   const handleAddUserByAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addName.trim() || !addEmail.trim()) return;
@@ -209,12 +204,18 @@ export default function AdminPanel() {
       setAddIsPremium(false);
       setIsAddUserModalOpen(false);
       showToast(`کاربر جدید با آیدی #${newUserRecord.numericId} با موفقیت افزوده شد!`);
-    } catch (err) {
-      showToast('خطا در افزودن کاربر جدید');
+    } catch (err: any) {
+      showToast(err?.message || 'خطا در افزودن کاربر جدید');
     } finally {
       setIsAddingUser(false);
     }
   };
+
+  // --- Admin Access Check (Condition after all hooks) ---
+  if (!isAdmin(user?.email)) {
+    return <Navigate to="/" replace />;
+  }
+
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-slate-200 font-sans p-6" dir="rtl">
@@ -545,7 +546,7 @@ export default function AdminPanel() {
 
                       {/* Premium Toggle Section */}
                       <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
-                        <div className="text-xs font-bold text-slate-300 mb-1">مدیریت سطح دسترسی</div>
+                        <div className="text-xs font-bold text-slate-300 mb-1">مدیریت سطح دسترسی و وضعیت</div>
                         {selectedUser.isPremium ? (
                           <button
                             onClick={() => handleTogglePremium(selectedUser, false)}
@@ -561,6 +562,24 @@ export default function AdminPanel() {
                           >
                             <Crown className="w-4 h-4" />
                             ارتقا به پرمیوم (VIP)
+                          </button>
+                        )}
+
+                        {selectedUser.status === 'disabled' ? (
+                          <button
+                            onClick={() => toggleUserStatus(selectedUser)}
+                            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30"
+                          >
+                            <UserCheck className="w-4 h-4 text-emerald-400" />
+                            فعال‌سازی مجدد حساب کاربر
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleUserStatus(selectedUser)}
+                            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30"
+                          >
+                            <UserX className="w-4 h-4 text-red-400" />
+                            غیرفعال کردن حساب کاربر
                           </button>
                         )}
                       </div>

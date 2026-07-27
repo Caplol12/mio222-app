@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
-import { initDB, getDB, getAllUsers, syncUserRecord, updateUserPremiumStatus, findUserById } from "./server/db.ts";
+import { initDB, getDB, getAllUsers, syncUserRecord, updateUserPremiumStatus, updateUserStatus, findUserById, findUserByEmail } from "./server/db.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key';
 const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
@@ -22,11 +22,35 @@ async function startServer() {
   // Enable JSON request body parsing
   app.use(express.json());
 
+  // Admin Middleware
+  const requireAdmin = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: "توکن ارسال نشده است" });
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { id?: string; email?: string };
+      const user = decoded.id ? findUserById(decoded.id) : (decoded.email ? findUserByEmail(decoded.email) : undefined);
+      if (!user) return res.status(401).json({ error: "کاربر یافت نشد" });
+      const isAdminUser = user.isAdmin || (user.email && user.email.toLowerCase() === 'montill22k@gmail.com');
+      if (!isAdminUser) return res.status(403).json({ error: "دسترسی غیرمجاز" });
+      req.user = user;
+      next();
+    } catch (err) {
+      return res.status(401).json({ error: "توکن نامعتبر یا منقضی شده است" });
+    }
+  };
+
   // User Sync & Status Endpoints
   app.post("/api/users/sync", (req, res) => {
     try {
-      const { id, name, email, provider } = req.body || {};
-      const user = syncUserRecord({ id, name, email, provider });
+      const { id, name, email, provider, isPremium } = req.body || {};
+      if (email) {
+        const existing = findUserByEmail(email);
+        if (existing && existing.id !== id && String(existing.numericId) !== String(id)) {
+          return res.status(409).json({ error: "کاربری با این ایمیل از قبل وجود دارد" });
+        }
+      }
+      const user = syncUserRecord({ id, name, email, provider, isPremium: isPremium === true || isPremium === "true" });
       res.json({
         user: {
           id: user.id,
@@ -36,6 +60,7 @@ async function startServer() {
           picture: user.picture || '',
           provider: user.provider,
           isPremium: !!user.isPremium,
+          status: user.status || 'active',
           createdAt: user.createdAt
         }
       });
@@ -59,6 +84,7 @@ async function startServer() {
           picture: user.picture || '',
           provider: user.provider,
           isPremium: !!user.isPremium,
+          status: user.status || 'active',
           createdAt: user.createdAt
         }
       });
@@ -68,7 +94,7 @@ async function startServer() {
   });
 
   // Admin User Endpoints
-  app.get("/api/admin/users", (req, res) => {
+  app.get("/api/admin/users", requireAdmin, (req, res) => {
     try {
       const users = getAllUsers().map(u => ({
         id: u.id,
@@ -78,6 +104,7 @@ async function startServer() {
         picture: u.picture || '',
         provider: u.provider,
         isPremium: !!u.isPremium,
+        status: u.status || 'active',
         createdAt: u.createdAt
       }));
       res.json({ users });
@@ -86,11 +113,12 @@ async function startServer() {
     }
   });
 
-  app.post("/api/admin/users/:id/premium", (req, res) => {
+  app.post("/api/admin/users/:id/premium", requireAdmin, (req, res) => {
     try {
       const { id } = req.params;
       const { isPremium } = req.body;
-      const updatedUser = updateUserPremiumStatus(id, Boolean(isPremium));
+      const premiumValue = isPremium === true || isPremium === "true";
+      const updatedUser = updateUserPremiumStatus(id, premiumValue);
       if (!updatedUser) return res.status(404).json({ error: "User not found" });
 
       res.json({
@@ -103,6 +131,7 @@ async function startServer() {
           picture: updatedUser.picture || '',
           provider: updatedUser.provider,
           isPremium: !!updatedUser.isPremium,
+          status: updatedUser.status || 'active',
           createdAt: updatedUser.createdAt
         }
       });
@@ -110,6 +139,36 @@ async function startServer() {
       res.status(500).json({ error: "Failed to update user premium status" });
     }
   });
+
+  app.post("/api/admin/users/:id/status", requireAdmin, (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      if (status !== 'active' && status !== 'disabled') {
+        return res.status(400).json({ error: "وضعیت نامعتبر است" });
+      }
+      const updatedUser = updateUserStatus(id, status);
+      if (!updatedUser) return res.status(404).json({ error: "User not found" });
+
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser.id,
+          numericId: updatedUser.numericId,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          picture: updatedUser.picture || '',
+          provider: updatedUser.provider,
+          isPremium: !!updatedUser.isPremium,
+          status: updatedUser.status || 'active',
+          createdAt: updatedUser.createdAt
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update user status" });
+    }
+  });
+
 
   // API endpoint to scrape and enhance bookmark metadata
   app.post("/api/scrape", async (req, res) => {
@@ -350,7 +409,7 @@ async function startServer() {
 
 
   // Export API keys to .env
-  app.post("/api/admin/export-env", async (req, res) => {
+  app.post("/api/admin/export-env", requireAdmin, async (req, res) => {
     try {
       const { keys } = req.body;
       if (!Array.isArray(keys)) {
