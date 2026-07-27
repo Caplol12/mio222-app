@@ -4,19 +4,10 @@ import { isAdmin } from '../utils/admin';
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, CheckCircle2, XCircle, FileCode, Crown, Star } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
+import { fetchAllSharedUsers, updateSharedUserPremiumStatus, UserRecord } from '../utils/userSync';
 
 // Types
-interface User {
-  id: string;
-  numericId?: number;
-  name: string;
-  email: string;
-  joinDate?: string;
-  createdAt?: string;
-  status?: 'active' | 'disabled';
-  isPremium?: boolean;
-  provider?: string;
-}
+type User = UserRecord;
 
 interface AdminSettings {
   defaultAiModel: string;
@@ -51,34 +42,11 @@ export default function AdminPanel() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users');
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data && Array.isArray(data.users)) {
-          setUsers(data.users);
-          return;
-        }
-      }
+      const allUsers = await fetchAllSharedUsers();
+      setUsers(allUsers);
     } catch (err) {
-      console.warn('Server API not available (Vercel SPA mode):', err);
+      console.warn('Failed to fetch shared users:', err);
     }
-    // Fallback to combine localStorage users for Vercel / offline mode
-    try {
-      const adminUsers = JSON.parse(localStorage.getItem('admin_users') || '[]');
-      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
-      const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
-      
-      const userMap = new Map<string, User>();
-      [...adminUsers, ...mockUsers, currentUser].forEach(u => {
-        if (u && u.id) {
-          userMap.set(u.id, { ...userMap.get(u.id), ...u });
-        }
-      });
-
-      const mergedUsers = Array.from(userMap.values());
-      setUsers(mergedUsers);
-    } catch {}
   };
 
   // Load initial data
@@ -168,7 +136,7 @@ export default function AdminPanel() {
   const toggleUserStatus = (userId: string) => {
     const newUsers = users.map(u => {
       if (u.id === userId) {
-        return { ...u, status: u.status === 'active' ? 'disabled' : 'active' } as User;
+        return { ...u, status: (u.status === 'active' ? 'disabled' : 'active') as any } as User;
       }
       return u;
     });
@@ -182,50 +150,18 @@ export default function AdminPanel() {
   };
 
   const handleTogglePremium = async (targetUser: User, makePremium: boolean) => {
-    const updatedUser = { ...targetUser, isPremium: makePremium };
-    const updatedUsers = users.map(u => (u.id === targetUser.id || (u.numericId && u.numericId === targetUser.numericId)) ? updatedUser : u);
-    
-    setUsers(updatedUsers);
-    if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
-      setSelectedUser(updatedUser);
-    }
-
-    // Persist to localStorage for Vercel SPA mode
-    try {
-      localStorage.setItem('admin_users', JSON.stringify(updatedUsers));
-      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
-      const updatedMock = mockUsers.map((u: any) => u.id === targetUser.id ? { ...u, isPremium: makePremium } : u);
-      localStorage.setItem('mock_users_db', JSON.stringify(updatedMock));
-
-      const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
-      if (currentUser && (currentUser.id === targetUser.id || currentUser.numericId === targetUser.numericId)) {
-        currentUser.isPremium = makePremium;
-        localStorage.setItem('user', JSON.stringify(currentUser));
-      }
-    } catch {}
-
     const targetId = targetUser.numericId || targetUser.id;
     try {
-      const res = await fetch(`/api/admin/users/${targetId}/premium`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isPremium: makePremium })
-      });
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data && data.user) {
-          const finalUsers = users.map(u => (u.id === targetUser.id || u.numericId === targetUser.numericId) ? { ...u, ...data.user } : u);
-          setUsers(finalUsers);
-          if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
-            setSelectedUser({ ...selectedUser, ...data.user });
-          }
-        }
-      }
+      const updatedList = await updateSharedUserPremiumStatus(targetId, makePremium);
+      setUsers(updatedList);
+
+      const updatedSelected = updatedList.find(u => u.id === targetUser.id || (u.numericId && u.numericId === targetUser.numericId));
+      if (updatedSelected) setSelectedUser(updatedSelected);
+
+      showToast(makePremium ? 'کاربر به پرمیوم ارتقا یافت ⭐️' : 'عضویت پرمیوم کاربر لغو شد');
     } catch (err) {
-      console.warn('Backend server sync for premium update skipped (Vercel SPA mode):', err);
+      console.error('Failed to toggle premium:', err);
     }
-    showToast(makePremium ? 'کاربر به پرمیوم ارتقا یافت ⭐️' : 'عضویت پرمیوم کاربر لغو شد');
   };
 
   // --- Settings Handlers ---
