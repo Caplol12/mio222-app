@@ -22,10 +22,10 @@ export interface AppSettings {
   autoColorMatch: boolean;
 }
 
-const defaultSettings: AppSettings = {
-  primaryColor: '#D07044',
-  boardColor: '#000000',
-  opacity: 40,
+export const defaultSettings: AppSettings = {
+  primaryColor: '#3B82F6',
+  boardColor: '#0F172A',
+  opacity: 30,
   blur: 24,
   textSize: 'M',
   textWeight: 'Normal',
