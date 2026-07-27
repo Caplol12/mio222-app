@@ -344,7 +344,7 @@ export default function BookmarkGrid({
                   return (
                     <div 
                       key={page.id}
-                      className="px-4 py-1.5 rounded-full bg-[#626c3c] text-white font-medium shadow-md flex items-center"
+                      className="px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white font-medium shadow-md flex items-center"
                     >
                       <input
                         type="text"
@@ -376,7 +376,7 @@ export default function BookmarkGrid({
                     }}
                     className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                       isActive 
-                        ? 'bg-[#626c3c] text-white shadow-md font-semibold' 
+                        ? 'bg-[var(--color-primary)] text-white shadow-md font-semibold' 
                         : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
