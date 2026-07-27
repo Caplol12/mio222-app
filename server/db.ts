@@ -28,6 +28,47 @@ export const getNextNumericId = (): number => {
   return maxId + 1;
 };
 
+const CLOUD_DB_URL = 'https://jsonblob.com/api/jsonBlob/019fa48c-8aad-751b-9b24-bc8e4461195e';
+
+export const syncWithCloud = async () => {
+  try {
+    const res = await fetch(CLOUD_DB_URL);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.users)) {
+        let updated = false;
+        data.users.forEach((cloudUser: DBUser) => {
+          if (!cloudUser || !cloudUser.id) return;
+          const idx = db.users.findIndex(u => u.id === cloudUser.id || (u.numericId && u.numericId === cloudUser.numericId));
+          if (idx >= 0) {
+            db.users[idx] = { ...db.users[idx], ...cloudUser };
+          } else {
+            db.users.push(cloudUser);
+            updated = true;
+          }
+        });
+        if (updated) {
+          saveDB();
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not sync with cloud DB on server", e);
+  }
+};
+
+export const pushToCloud = async () => {
+  try {
+    await fetch(CLOUD_DB_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ users: db.users })
+    });
+  } catch (e) {
+    console.warn("Could not push DB to cloud", e);
+  }
+};
+
 export const initDB = () => {
   if (fs.existsSync(dbPath)) {
     try {
@@ -35,7 +76,6 @@ export const initDB = () => {
       db = JSON.parse(data);
       if (!db.users) db.users = [];
       
-      // Ensure all existing users have numericId and isPremium
       let updated = false;
       let nextId = 1001;
       db.users.forEach(u => {
@@ -59,10 +99,14 @@ export const initDB = () => {
   } else {
     fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
   }
+
+  // Background sync with shared cloud DB
+  syncWithCloud();
 };
 
 export const saveDB = () => {
   fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
+  pushToCloud();
 };
 
 export const getAllUsers = (): DBUser[] => {
