@@ -177,9 +177,26 @@ export default function BookmarkGrid({
   const [dashboardOrder, setDashboardOrder] = useState(() => { try { const s = localStorage.getItem("dash_order"); return s ? JSON.parse(s) : {left: 1, center: 2, right: 3}; } catch { return {left: 1, center: 2, right: 3}; }});
   const [isEditDashboard, setIsEditDashboard] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isWallpaperOpen, setIsWallpaperOpen] = useState(false);
   const [isAddPageModalOpen, setIsAddPageModalOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editingPageName, setEditingPageName] = useState<string>("");
+
+  const handleAddNewPage = useCallback(() => {
+    const newId = 'page-' + Date.now();
+    const defaultName = "New Page";
+    setPages(prev => [...prev, { id: newId, name: defaultName }]);
+    setActivePage(newId);
+    setEditingPageId(newId);
+    setEditingPageName(defaultName);
+  }, [setPages, setActivePage]);
+
+  const handleSavePageName = useCallback((pageId: string) => {
+    if (editingPageName.trim()) {
+      setPages(prev => prev.map(p => p.id === pageId ? { ...p, name: editingPageName.trim() } : p));
+    }
+    setEditingPageId(null);
+  }, [editingPageName, setPages]);
   
 
   const [allWidgetVisibility, setAllWidgetVisibility] = useState<Record<string, any>>(() => {
@@ -316,28 +333,63 @@ export default function BookmarkGrid({
         {/* Pages Tabs, Search, and Focus Widget */}
         <div className="flex items-center justify-between w-full mb-8" dir="ltr">
           <div className="flex items-center gap-3">
-            {/* Tabs Container */}
-            <div style={getGlassStyle()} className="flex items-center border border-white/40 dark:border-white/10 rounded-full p-1.5 shadow-sm">
-              {pages.map(page => (
-                <button
-                  key={page.id}
-                  onClick={() => setActivePage(page.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setPageContextMenu({ x: e.clientX, y: e.clientY, pageId: page.id });
-                  }}
-                  className={`px-5 py-2 rounded-full text-[13px] font-semibold transition-all ${activePage === page.id ? 'bg-[var(--color-primary)] text-slate-900 dark:text-white shadow-md' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-white/5'}`}
-                >
-                  {page.name}
-                </button>
-              ))}
+            {/* Tabs Container matching uploaded UI design */}
+            <div className="flex items-center bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-full p-1.5 shadow-lg shadow-black/5 gap-1 select-none">
+              {pages.map(page => {
+                const isActive = activePage === page.id;
+                const isEditing = editingPageId === page.id;
+
+                if (isEditing) {
+                  return (
+                    <div 
+                      key={page.id}
+                      className="px-4 py-1.5 rounded-full bg-[#626c3c] text-white font-medium shadow-md flex items-center"
+                    >
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editingPageName}
+                        onChange={(e) => setEditingPageName(e.target.value)}
+                        onBlur={() => handleSavePageName(page.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSavePageName(page.id);
+                          if (e.key === "Escape") setEditingPageId(null);
+                        }}
+                        className="bg-blue-600 text-white font-semibold text-sm px-1.5 py-0.5 rounded outline-none w-24 text-center select-all"
+                      />
+                    </div>
+                  );
+                }
+
+                return (
+                  <button
+                    key={page.id}
+                    onClick={() => setActivePage(page.id)}
+                    onDoubleClick={() => {
+                      setEditingPageId(page.id);
+                      setEditingPageName(page.name);
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setPageContextMenu({ x: e.clientX, y: e.clientY, pageId: page.id });
+                    }}
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-[#626c3c] text-white shadow-md font-semibold' 
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {page.name}
+                  </button>
+                );
+              })}
               
               <button
-                onClick={() => setIsAddPageModalOpen(true)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors ml-1"
-                title="افزودن صفحه"
+                onClick={handleAddNewPage}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors text-lg font-light ml-0.5"
+                title="افزودن صفحه جدید"
               >
-                <Plus className="w-4 h-4" />
+                +
               </button>
             </div>
 
