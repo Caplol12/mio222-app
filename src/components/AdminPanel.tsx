@@ -52,19 +52,32 @@ export default function AdminPanel() {
   const fetchUsers = async () => {
     try {
       const res = await fetch('/api/admin/users');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (Array.isArray(data.users)) {
+        if (data && Array.isArray(data.users)) {
           setUsers(data.users);
           return;
         }
       }
     } catch (err) {
-      console.warn('Failed to fetch admin users from server:', err);
+      console.warn('Server API not available (Vercel SPA mode):', err);
     }
+    // Fallback to combine localStorage users for Vercel / offline mode
     try {
-      const storedUsers = localStorage.getItem('admin_users');
-      if (storedUsers) setUsers(JSON.parse(storedUsers));
+      const adminUsers = JSON.parse(localStorage.getItem('admin_users') || '[]');
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
+      const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+      
+      const userMap = new Map<string, User>();
+      [...adminUsers, ...mockUsers, currentUser].forEach(u => {
+        if (u && u.id) {
+          userMap.set(u.id, { ...userMap.get(u.id), ...u });
+        }
+      });
+
+      const mergedUsers = Array.from(userMap.values());
+      setUsers(mergedUsers);
     } catch {}
   };
 
@@ -169,6 +182,28 @@ export default function AdminPanel() {
   };
 
   const handleTogglePremium = async (targetUser: User, makePremium: boolean) => {
+    const updatedUser = { ...targetUser, isPremium: makePremium };
+    const updatedUsers = users.map(u => (u.id === targetUser.id || (u.numericId && u.numericId === targetUser.numericId)) ? updatedUser : u);
+    
+    setUsers(updatedUsers);
+    if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
+      setSelectedUser(updatedUser);
+    }
+
+    // Persist to localStorage for Vercel SPA mode
+    try {
+      localStorage.setItem('admin_users', JSON.stringify(updatedUsers));
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
+      const updatedMock = mockUsers.map((u: any) => u.id === targetUser.id ? { ...u, isPremium: makePremium } : u);
+      localStorage.setItem('mock_users_db', JSON.stringify(updatedMock));
+
+      const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+      if (currentUser && (currentUser.id === targetUser.id || currentUser.numericId === targetUser.numericId)) {
+        currentUser.isPremium = makePremium;
+        localStorage.setItem('user', JSON.stringify(currentUser));
+      }
+    } catch {}
+
     const targetId = targetUser.numericId || targetUser.id;
     try {
       const res = await fetch(`/api/admin/users/${targetId}/premium`, {
@@ -176,27 +211,21 @@ export default function AdminPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPremium: makePremium })
       });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.user) {
-          const updated = users.map(u => (u.id === targetUser.id || u.numericId === targetUser.numericId) ? { ...u, ...data.user } : u);
-          setUsers(updated);
+        if (data && data.user) {
+          const finalUsers = users.map(u => (u.id === targetUser.id || u.numericId === targetUser.numericId) ? { ...u, ...data.user } : u);
+          setUsers(finalUsers);
           if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
             setSelectedUser({ ...selectedUser, ...data.user });
           }
-          showToast(makePremium ? 'کاربر به پرمیوم ارتقا یافت ⭐️' : 'عضویت پرمیوم کاربر لغو شد');
-          return;
         }
       }
     } catch (err) {
-      console.error('Error toggling premium:', err);
+      console.warn('Backend server sync for premium update skipped (Vercel SPA mode):', err);
     }
-    const updated = users.map(u => (u.id === targetUser.id) ? { ...u, isPremium: makePremium } : u);
-    setUsers(updated);
-    if (selectedUser && selectedUser.id === targetUser.id) {
-      setSelectedUser({ ...selectedUser, isPremium: makePremium });
-    }
-    showToast(makePremium ? 'وضعیت پرمیوم در لوکال ثبت شد' : 'لغو پرمیوم در لوکال ثبت شد');
+    showToast(makePremium ? 'کاربر به پرمیوم ارتقا یافت ⭐️' : 'عضویت پرمیوم کاربر لغو شد');
   };
 
   // --- Settings Handlers ---

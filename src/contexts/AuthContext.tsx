@@ -28,39 +28,87 @@ const AuthContext = createContext<AuthContextType>({
   refreshUserStatus: async () => null,
 });
 
+const getLocalNextNumericId = (): number => {
+  try {
+    const adminUsers = JSON.parse(localStorage.getItem('admin_users') || '[]');
+    const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
+    const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const all = [...adminUsers, ...mockUsers];
+    if (currentUser) all.push(currentUser);
+
+    let maxId = 1000;
+    all.forEach(u => {
+      if (u && typeof u.numericId === 'number' && u.numericId > maxId) {
+        maxId = u.numericId;
+      }
+    });
+    return maxId + 1;
+  } catch {
+    return 1001;
+  }
+};
+
+const syncUserToLocalStorageAdmin = (userToSave: User) => {
+  try {
+    const adminUsers: User[] = JSON.parse(localStorage.getItem('admin_users') || '[]');
+    const idx = adminUsers.findIndex(u => u.id === userToSave.id || (u.numericId && u.numericId === userToSave.numericId));
+    if (idx >= 0) {
+      adminUsers[idx] = { ...adminUsers[idx], ...userToSave };
+    } else {
+      adminUsers.push(userToSave);
+    }
+    localStorage.setItem('admin_users', JSON.stringify(adminUsers));
+  } catch {}
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const syncUserWithServer = useCallback(async (targetUser: User): Promise<User> => {
+    // Ensure user has local numericId and isPremium default
+    const preparedUser: User = {
+      ...targetUser,
+      numericId: targetUser.numericId || getLocalNextNumericId(),
+      isPremium: targetUser.isPremium || false
+    };
+
+    // Save locally immediately to guarantee state & storage update on Vercel / offline
+    localStorage.setItem('user', JSON.stringify(preparedUser));
+    setUser(preparedUser);
+    syncUserToLocalStorageAdmin(preparedUser);
+
     try {
       const res = await fetch('/api/users/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: targetUser.id,
-          name: targetUser.name,
-          email: targetUser.email,
-          provider: targetUser.provider || 'local'
+          id: preparedUser.id,
+          name: preparedUser.name,
+          email: preparedUser.email,
+          provider: preparedUser.provider || 'local'
         })
       });
-      if (res.ok) {
+
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.user) {
+        if (data && data.user) {
           const updatedUser: User = {
-            ...targetUser,
+            ...preparedUser,
             ...data.user,
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           setUser(updatedUser);
+          syncUserToLocalStorageAdmin(updatedUser);
           return updatedUser;
         }
       }
     } catch (err) {
-      console.warn('Failed to sync user with server:', err);
+      console.warn('Backend server sync not available (running in local/Vercel SPA mode):', err);
     }
-    return targetUser;
+    return preparedUser;
   }, []);
 
   const refreshUserStatus = useCallback(async (): Promise<User | null> => {
@@ -68,20 +116,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const searchId = user.numericId || user.id;
     try {
       const res = await fetch(`/api/users/status/${searchId}`);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.user) {
+        if (data && data.user) {
           const updatedUser: User = {
             ...user,
             ...data.user,
           };
           localStorage.setItem('user', JSON.stringify(updatedUser));
           setUser(updatedUser);
+          syncUserToLocalStorageAdmin(updatedUser);
           return updatedUser;
         }
       }
     } catch (err) {
-      console.warn('Failed to refresh user status:', err);
+      console.warn('Failed to refresh user status from server:', err);
     }
     return user;
   }, [user]);
@@ -94,18 +144,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        // Async background sync with server
         syncUserWithServer(parsedUser);
       } catch {}
     } else {
-      // Automatic first visit guest registration if no user exists
+      // Automatic first visit guest registration
       const guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
       const guestUser: User = {
         id: guestId,
+        numericId: getLocalNextNumericId(),
         name: 'کاربر مهمان',
         email: `guest_${guestId.substring(6, 12)}@local.app`,
         picture: '',
-        provider: 'guest'
+        provider: 'guest',
+        isPremium: false
       };
       localStorage.setItem('token', 'guest-token');
       setToken('guest-token');
@@ -136,4 +187,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
+
 
