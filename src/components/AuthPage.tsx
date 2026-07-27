@@ -34,7 +34,7 @@ export default function AuthPage() {
         
         // Remove password before saving to state
         const { password: _, ...userData } = user;
-        login('mock-token-' + Date.now(), userData);
+        await login('mock-token-' + Date.now(), userData);
         navigate('/');
       } else {
         // Mock Register
@@ -57,7 +57,7 @@ export default function AuthPage() {
         localStorage.setItem('mock_users_db', JSON.stringify(users));
 
         const { password: _, ...userData } = newUser;
-        login('mock-token-' + Date.now(), userData);
+        await login('mock-token-' + Date.now(), userData);
         navigate('/');
       }
     } catch (err: any) {
@@ -67,14 +67,15 @@ export default function AuthPage() {
     }
   };
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = async () => {
     const guestUser = {
-      id: 'guest_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36),
+      id: 'guest_' + Math.random().toString(36).substring(2, 10),
       name: 'کاربر مهمان',
       email: 'guest@example.com',
-      picture: ''
+      picture: '',
+      provider: 'guest'
     };
-    login('guest-token', guestUser);
+    await login('guest-token', guestUser);
     navigate('/');
   };
 

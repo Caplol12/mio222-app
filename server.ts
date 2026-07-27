@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
-import { initDB, getDB } from "./server/db.ts";
+import { initDB, getDB, getAllUsers, syncUserRecord, updateUserPremiumStatus, findUserById } from "./server/db.ts";
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-jwt-key';
 const googleClient = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
@@ -21,6 +21,95 @@ async function startServer() {
 
   // Enable JSON request body parsing
   app.use(express.json());
+
+  // User Sync & Status Endpoints
+  app.post("/api/users/sync", (req, res) => {
+    try {
+      const { id, name, email, provider } = req.body || {};
+      const user = syncUserRecord({ id, name, email, provider });
+      res.json({
+        user: {
+          id: user.id,
+          numericId: user.numericId,
+          name: user.name,
+          email: user.email,
+          picture: user.picture || '',
+          provider: user.provider,
+          isPremium: !!user.isPremium,
+          createdAt: user.createdAt
+        }
+      });
+    } catch (err) {
+      console.error("User sync error:", err);
+      res.status(500).json({ error: "Failed to sync user" });
+    }
+  });
+
+  app.get("/api/users/status/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      const user = findUserById(id);
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json({
+        user: {
+          id: user.id,
+          numericId: user.numericId,
+          name: user.name,
+          email: user.email,
+          picture: user.picture || '',
+          provider: user.provider,
+          isPremium: !!user.isPremium,
+          createdAt: user.createdAt
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch user status" });
+    }
+  });
+
+  // Admin User Endpoints
+  app.get("/api/admin/users", (req, res) => {
+    try {
+      const users = getAllUsers().map(u => ({
+        id: u.id,
+        numericId: u.numericId,
+        name: u.name,
+        email: u.email,
+        picture: u.picture || '',
+        provider: u.provider,
+        isPremium: !!u.isPremium,
+        createdAt: u.createdAt
+      }));
+      res.json({ users });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch admin users" });
+    }
+  });
+
+  app.post("/api/admin/users/:id/premium", (req, res) => {
+    try {
+      const { id } = req.params;
+      const { isPremium } = req.body;
+      const updatedUser = updateUserPremiumStatus(id, Boolean(isPremium));
+      if (!updatedUser) return res.status(404).json({ error: "User not found" });
+
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser.id,
+          numericId: updatedUser.numericId,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          picture: updatedUser.picture || '',
+          provider: updatedUser.provider,
+          isPremium: !!updatedUser.isPremium,
+          createdAt: updatedUser.createdAt
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update user premium status" });
+    }
+  });
 
   // API endpoint to scrape and enhance bookmark metadata
   app.post("/api/scrape", async (req, res) => {

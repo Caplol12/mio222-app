@@ -2,16 +2,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { isAdmin } from '../utils/admin';
 import React, { useState, useEffect } from 'react';
-import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, CheckCircle2, XCircle, FileCode } from 'lucide-react';
+import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, CheckCircle2, XCircle, FileCode, Crown, Star } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
 
 // Types
 interface User {
   id: string;
+  numericId?: number;
   name: string;
   email: string;
-  joinDate: string;
-  status: 'active' | 'disabled';
+  joinDate?: string;
+  createdAt?: string;
+  status?: 'active' | 'disabled';
+  isPremium?: boolean;
+  provider?: string;
 }
 
 interface AdminSettings {
@@ -45,6 +49,25 @@ export default function AdminPanel() {
     chatbotEnabled: true,
   });
 
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.users)) {
+          setUsers(data.users);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch admin users from server:', err);
+    }
+    try {
+      const storedUsers = localStorage.getItem('admin_users');
+      if (storedUsers) setUsers(JSON.parse(storedUsers));
+    } catch {}
+  };
+
   // Load initial data
   useEffect(() => {
     // Load Keys
@@ -55,7 +78,6 @@ export default function AdminPanel() {
         if (parsed && parsed.length > 0) {
           setApiKeys(parsed);
         } else {
-          // If empty, set defaults
           setApiKeys(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']);
           localStorage.setItem('gemini_api_keys', JSON.stringify(['AQ.Ab8RN6I4OC4_mIAFDvXMDMcqsajwQ1OdSGye7F9Zzp9tsYt1WQ', 'AQ.Ab8RN6IFI1cqGpPRRb8e7BofiIYoZ97XAwkBmL0KgJYlb3cSPQ']));
         }
@@ -70,17 +92,14 @@ export default function AdminPanel() {
       if (storedSettings) setAdminSettings(JSON.parse(storedSettings));
     } catch {}
 
-    // Load Mock Users
-    try {
-      const storedUsers = localStorage.getItem('admin_users');
-      if (storedUsers) {
-        setUsers(JSON.parse(storedUsers));
-      } else {
-        setUsers([]);
-        localStorage.setItem('admin_users', JSON.stringify([]));
-      }
-    } catch {}
+    fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -123,9 +142,15 @@ export default function AdminPanel() {
   };
 
   // --- User Handlers ---
-  const filteredUsers = users.filter(u => 
-    u.name.includes(searchQuery) || u.email.includes(searchQuery)
-  );
+  const filteredUsers = users.filter(u => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    const matchNumericId = u.numericId ? u.numericId.toString().includes(q) : false;
+    const matchId = u.id.toLowerCase().includes(q);
+    const matchName = u.name.toLowerCase().includes(q);
+    const matchEmail = u.email.toLowerCase().includes(q);
+    return matchNumericId || matchId || matchName || matchEmail;
+  });
 
   const toggleUserStatus = (userId: string) => {
     const newUsers = users.map(u => {
@@ -141,6 +166,37 @@ export default function AdminPanel() {
       setSelectedUser(newUsers.find(u => u.id === userId) || null);
     }
     showToast('وضعیت کاربر تغییر کرد');
+  };
+
+  const handleTogglePremium = async (targetUser: User, makePremium: boolean) => {
+    const targetId = targetUser.numericId || targetUser.id;
+    try {
+      const res = await fetch(`/api/admin/users/${targetId}/premium`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPremium: makePremium })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const updated = users.map(u => (u.id === targetUser.id || u.numericId === targetUser.numericId) ? { ...u, ...data.user } : u);
+          setUsers(updated);
+          if (selectedUser && (selectedUser.id === targetUser.id || selectedUser.numericId === targetUser.numericId)) {
+            setSelectedUser({ ...selectedUser, ...data.user });
+          }
+          showToast(makePremium ? 'کاربر به پرمیوم ارتقا یافت ⭐️' : 'عضویت پرمیوم کاربر لغو شد');
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling premium:', err);
+    }
+    const updated = users.map(u => (u.id === targetUser.id) ? { ...u, isPremium: makePremium } : u);
+    setUsers(updated);
+    if (selectedUser && selectedUser.id === targetUser.id) {
+      setSelectedUser({ ...selectedUser, isPremium: makePremium });
+    }
+    showToast(makePremium ? 'وضعیت پرمیوم در لوکال ثبت شد' : 'لغو پرمیوم در لوکال ثبت شد');
   };
 
   // --- Settings Handlers ---
@@ -167,7 +223,7 @@ export default function AdminPanel() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">پنل مدیریت</h1>
-              <p className="text-sm text-slate-400 mt-1">مدیریت کاربران، کلیدهای API و تنظیمات سیستم</p>
+              <p className="text-sm text-slate-400 mt-1">مدیریت کاربران، وضعیت پرمیوم، کلیدهای API و تنظیمات سیستم</p>
             </div>
           </div>
           <a 
@@ -184,21 +240,21 @@ export default function AdminPanel() {
           <div style={getGlassStyle()} className="w-64 rounded-3xl p-4 border border-white/10 flex flex-col gap-2 shrink-0 h-full">
             <button 
               onClick={() => setActiveTab('keys')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold \${activeTab === 'keys' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${activeTab === 'keys' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
             >
               <Key className="w-5 h-5" />
               کلیدهای API
             </button>
             <button 
               onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold \${activeTab === 'users' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${activeTab === 'users' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
             >
               <Users className="w-5 h-5" />
               مدیریت کاربران
             </button>
             <button 
               onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold \${activeTab === 'settings' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-bold ${activeTab === 'settings' ? 'bg-[var(--color-primary)] text-slate-900 shadow-lg' : 'text-slate-300 hover:bg-white/5'}`}
             >
               <Settings className="w-5 h-5" />
               تنظیمات سیستم
@@ -283,86 +339,145 @@ export default function AdminPanel() {
                 {/* Users List */}
                 <div className="flex-1 border-l border-white/10 flex flex-col">
                   <div className="p-6 border-b border-white/10">
-                    <h2 className="text-xl font-bold text-white mb-4">کاربران سیستم</h2>
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-white">کاربران سیستم ({filteredUsers.length})</h2>
+                      <button 
+                        onClick={fetchUsers} 
+                        className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10 text-slate-300 transition-all"
+                      >
+                        بروزرسانی لیست
+                      </button>
+                    </div>
                     <div className="relative">
                       <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input 
                         type="text" 
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="جستجوی کاربر (نام، ایمیل)..."
+                        placeholder="جستجوی کاربر (آیدی عددی، نام، ایمیل)..."
                         className="w-full bg-black/20 border border-white/10 rounded-xl py-2.5 pr-10 pl-4 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all"
                       />
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4">
-                    <div className="grid gap-2">
-                      {filteredUsers.map(user => (
-                        <div 
-                          key={user.id}
-                          onClick={() => setSelectedUser(user)}
-                          className={`p-4 rounded-xl cursor-pointer transition-all border \${selectedUser?.id === user.id ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="font-bold text-white">{user.name}</div>
-                              <div className="text-xs text-slate-400 mt-1">{user.email}</div>
+                    {filteredUsers.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                        هیچ کاربر مطابق با جستجو پیدا نشد.
+                      </div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {filteredUsers.map(u => (
+                          <div 
+                            key={u.id}
+                            onClick={() => setSelectedUser(u)}
+                            className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedUser?.id === u.id ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]/40 shadow-md' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                                  {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold text-white text-sm">{u.name}</span>
+                                    {u.numericId && (
+                                      <span className="bg-white/10 text-slate-300 font-mono text-[11px] px-2 py-0.5 rounded-md border border-white/10">
+                                        #{u.numericId}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-slate-400 mt-0.5" dir="ltr">{u.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {u.isPremium ? (
+                                  <span className="text-[11px] px-2.5 py-1 rounded-full font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                    <Crown className="w-3 h-3 text-amber-400" /> پرمیوم
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-slate-800 text-slate-400 border border-white/5">
+                                    عادی
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <span className={`text-[10px] px-2 py-1 rounded-md font-bold \${user.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                              {user.status === 'active' ? 'فعال' : 'غیرفعال'}
-                            </span>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
                 {/* User Details Panel */}
                 <div className="w-80 bg-black/10 flex flex-col">
                   {selectedUser ? (
-                    <div className="p-6 flex flex-col gap-6">
+                    <div className="p-6 flex flex-col gap-5 overflow-y-auto">
                       <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-                          {selectedUser.name.charAt(0)}
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl font-bold text-white shadow-lg">
+                          {selectedUser.name ? selectedUser.name.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div>
-                          <h3 className="font-bold text-lg text-white">{selectedUser.name}</h3>
-                          <span className={`text-xs font-bold \${selectedUser.status === 'active' ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {selectedUser.status === 'active' ? 'اکانت فعال' : 'اکانت غیرفعال'}
-                          </span>
+                          <h3 className="font-bold text-base text-white">{selectedUser.name}</h3>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {selectedUser.isPremium ? (
+                              <span className="text-xs font-bold text-amber-400 flex items-center gap-1">
+                                <Crown className="w-3.5 h-3.5" /> کاربر پرمیوم
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400">کاربر عادی</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col gap-4">
+                      <div className="bg-white/5 rounded-2xl p-4 border border-white/5 flex flex-col gap-3.5">
                         <div>
-                          <div className="text-xs text-slate-500 mb-1">ایمیل</div>
-                          <div className="text-sm font-medium">{selectedUser.email}</div>
+                          <div className="text-xs text-slate-500 mb-0.5">آیدی عددی (سرور)</div>
+                          <div className="text-sm font-bold font-mono text-[var(--color-primary)]">
+                            #{selectedUser.numericId || 'تعریف نشده'}
+                          </div>
                         </div>
                         <div>
-                          <div className="text-xs text-slate-500 mb-1">تاریخ عضویت</div>
-                          <div className="text-sm font-medium">{selectedUser.joinDate}</div>
+                          <div className="text-xs text-slate-500 mb-0.5">ایمیل</div>
+                          <div className="text-sm font-medium text-slate-200 break-all" dir="ltr">{selectedUser.email}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-slate-500 mb-1">شناسه یکتا</div>
-                          <div className="text-xs font-mono text-slate-400">{selectedUser.id}</div>
+                          <div className="text-xs text-slate-500 mb-0.5">نوع اکانت</div>
+                          <div className="text-sm font-medium text-slate-200">
+                            {selectedUser.provider === 'google' ? 'Google Auth' : selectedUser.provider === 'guest' ? 'مهمان (Guest)' : 'ثبت نام مستقیم'}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-slate-500 mb-0.5">شناسه متنی یکتا</div>
+                          <div className="text-[11px] font-mono text-slate-400 break-all">{selectedUser.id}</div>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => toggleUserStatus(selectedUser.id)}
-                        className={`w-full py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all \${selectedUser.status === 'active' ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20' : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'}`}
-                      >
-                        {selectedUser.status === 'active' ? (
-                          <><XCircle className="w-4 h-4" /> غیرفعال کردن اکانت</>
+                      {/* Premium Toggle Section */}
+                      <div className="flex flex-col gap-2 pt-2 border-t border-white/10">
+                        <div className="text-xs font-bold text-slate-300 mb-1">مدیریت سطح دسترسی</div>
+                        {selectedUser.isPremium ? (
+                          <button
+                            onClick={() => handleTogglePremium(selectedUser, false)}
+                            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30"
+                          >
+                            <XCircle className="w-4 h-4 text-amber-400" />
+                            لغو عضویت پرمیوم
+                          </button>
                         ) : (
-                          <><CheckCircle2 className="w-4 h-4" /> فعال کردن اکانت</>
+                          <button
+                            onClick={() => handleTogglePremium(selectedUser, true)}
+                            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 hover:brightness-110 shadow-lg"
+                          >
+                            <Crown className="w-4 h-4" />
+                            ارتقا به پرمیوم (VIP)
+                          </button>
                         )}
-                      </button>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex-1 flex items-center justify-center text-slate-500 text-sm p-6 text-center">
-                      برای مشاهده جزئیات، یک کاربر را از لیست انتخاب کنید
+                      برای مشاهده جزئیات و مدیریت کاربر، یک مورد را از لیست انتخاب کنید
                     </div>
                   )}
                 </div>
