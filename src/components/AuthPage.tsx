@@ -26,30 +26,30 @@ export default function AuthPage() {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ email: email.trim(), password })
         });
         
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           throw new Error(data.error || 'ایمیل یا رمز عبور اشتباه است.');
         }
         
-        const { token, user } = await res.json();
+        const { token, user } = data;
         await login(token, user);
         navigate('/');
       } else {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name || 'کاربر جدید', email, password })
+          body: JSON.stringify({ name: name.trim() || 'کاربر جدید', email: email.trim(), password })
         });
 
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
           throw new Error(data.error || 'این ایمیل قبلاً ثبت شده است.');
         }
 
-        const { token, user } = await res.json();
+        const { token, user } = data;
         await login(token, user);
         navigate('/');
       }
