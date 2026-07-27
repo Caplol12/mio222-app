@@ -37,7 +37,7 @@ const defaultSettings: AppSettings = {
   saveToBoard: 'نوار نشانک‌ها',
   language: 'Auto',
   showAllSidebar: false,
-  backgroundUrl: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2048&auto=format&fit=crop',
+  backgroundUrl: 'https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=2048&auto=format&fit=crop',
   backgroundType: 'image',
   themeMode: 'dark',
   autoColorMatch: true,
