@@ -39,7 +39,7 @@ function SortableItem({ id, isActive, children }: { id: string, isActive?: boole
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    zIndex: (isDragging || isActive) ? 50 : undefined,
+    zIndex: (isDragging || isActive) ? 9999 : undefined,
   };
 
   return (
@@ -386,7 +386,7 @@ export default function DraggableDashboard({
 
       return (
         <div 
-          style={getGlassStyle()} 
+          style={{ ...getGlassStyle(), ...(openMenuId === `cat-${cat.id}` || catBookmarks.some(bm => bm.id === openMenuId) || catBookmarks.some(bm => bm.id === inlineEditId) ? { zIndex: 9999, overflow: 'visible' } : {}) }} 
           onClick={() => setSelectedCatId(cat.id)}
           className={`border rounded-[20px] flex flex-col shadow-sm mb-4 ${Object.keys(columns).length <= 4 ? 'p-1.5 md:p-3' : 'p-3'} transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 ${isSelected ? 'ring-2 ring-blue-500 border-blue-500/80 shadow-md shadow-blue-500/10' : 'border-white/40 dark:border-white/10'}`}
           tabIndex={0}
@@ -565,7 +565,7 @@ export default function DraggableDashboard({
           )}
           <div className="flex flex-col gap-0.5">
             {catBookmarks.map(bm => (
-              <div key={bm.id} className="relative group/bm flex items-center justify-between px-1 sm:px-2 py-1 min-w-0 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/5 transition-colors w-full" dir="ltr">
+              <div key={bm.id} className="relative group/bm flex items-center justify-between px-1 sm:px-2 py-1 min-w-0 rounded-lg hover:bg-slate-900/5 dark:hover:bg-white/5 transition-colors w-full" style={{ zIndex: openMenuId === bm.id || inlineEditId === bm.id ? 9999 : undefined }} dir="ltr">
                 <button 
                   onClick={() => window.open(bm.url, "_blank")}
                   className={`flex items-center ${Object.keys(columns).length <= 4 ? 'gap-1 md:gap-1.5' : 'gap-2'} text-slate-700 dark:text-slate-200 text-sm w-full text-left overflow-hidden min-w-0`}
@@ -721,7 +721,7 @@ export default function DraggableDashboard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className={`w-full pb-4 ${Object.keys(columns).length > 4 ? 'overflow-x-auto' : 'overflow-x-hidden'}`}>
+      <div className={`w-full pb-4 ${Object.keys(columns).length > 4 ? 'overflow-x-auto overflow-y-visible' : 'overflow-visible'}`}>
         <div 
           className="grid mt-8 pb-12 min-h-[500px] px-2 w-full gap-4 sm:gap-5 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:[grid-template-columns:var(--desktop-cols)]"
           style={{ '--desktop-cols': `repeat(${Object.keys(columns).length || 1}, minmax(${Object.keys(columns).length > 4 ? '260px' : '0'}, 1fr))` } as any}
