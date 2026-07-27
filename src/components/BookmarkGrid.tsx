@@ -177,6 +177,7 @@ export default function BookmarkGrid({
   const [dashboardOrder, setDashboardOrder] = useState(() => { try { const s = localStorage.getItem("dash_order"); return s ? JSON.parse(s) : {left: 1, center: 2, right: 3}; } catch { return {left: 1, center: 2, right: 3}; }});
   const [isEditDashboard, setIsEditDashboard] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWallpaperOpen, setIsWallpaperOpen] = useState(false);
   const [isAddPageModalOpen, setIsAddPageModalOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
