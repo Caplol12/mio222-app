@@ -27,8 +27,8 @@ import NotesWidget from "./NotesWidget";
 
 // Portal-based dropdown menu that escapes parent stacking contexts
 // (backdrop-filter on parent creates a new stacking context that traps z-index)
-function PortalMenu({ anchorRef, children, className, dir }: { 
-  anchorRef: React.RefObject<HTMLElement>, 
+function PortalMenu({ anchorEl, children, className, dir }: { 
+  anchorEl: HTMLElement | null, 
   children: React.ReactNode, 
   className?: string,
   dir?: string
@@ -36,19 +36,21 @@ function PortalMenu({ anchorRef, children, className, dir }: {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (anchorRef.current) {
-      const rect = anchorRef.current.getBoundingClientRect();
-      const menuWidth = 192; // w-48 = 12rem = 192px
-      const menuHeight = 200; // approximate
-      let left = rect.right - menuWidth;
-      let top = rect.bottom + 4;
-      // Clamp to viewport
-      if (left < 8) left = 8;
-      if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
-      if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 4;
-      setPos({ top, left });
+    if (!anchorEl) {
+      setPos(null);
+      return;
     }
-  }, [anchorRef.current]);
+    const rect = anchorEl.getBoundingClientRect();
+    const menuWidth = 192; // w-48 = 12rem = 192px
+    const menuHeight = 200; // approximate
+    let left = rect.right - menuWidth;
+    let top = rect.bottom + 4;
+    // Clamp to viewport
+    if (left < 8) left = 8;
+    if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+    if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 4;
+    setPos({ top, left });
+  }, [anchorEl]);
 
   if (!pos) return null;
 
@@ -169,16 +171,15 @@ export default function DraggableDashboard({
   const [editDesc, setEditDesc] = useState('');
   const [quickAddInput, setQuickAddInput] = useState<string | null>(null);
   
-  // Refs for portal menu anchoring
-  const bookmarkMenuRef = useRef<HTMLElement>(null);
-  const categoryMenuRef = useRef<HTMLElement>(null);
-  const inlineEditRef = useRef<HTMLElement>(null);
+  // Store the anchor element (the clicked button) for portal positioning
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenMenuId(null);
       setWidgetMenuId(null);
       setInlineEditId(null);
+      setMenuAnchorEl(null);
     };
     document.addEventListener('click', handleGlobalClick);
     return () => document.removeEventListener('click', handleGlobalClick);
@@ -521,9 +522,9 @@ export default function DraggableDashboard({
               
               {/* Category 3-dot Menu */}
               <button 
-                ref={categoryMenuRef}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setMenuAnchorEl(e.currentTarget);
                   setOpenMenuId(openMenuId === `cat-${cat.id}` ? null : `cat-${cat.id}`);
                   setInlineEditId(null);
                 }}
@@ -534,7 +535,7 @@ export default function DraggableDashboard({
               </button>
               
               {openMenuId === `cat-${cat.id}` && (
-                <PortalMenu anchorRef={categoryMenuRef} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                <PortalMenu anchorEl={menuAnchorEl} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
@@ -638,9 +639,9 @@ export default function DraggableDashboard({
                 {/* 3-dot menu button */}
                 <div className="relative flex-shrink-0 ml-1">
                   <button 
-                    ref={bookmarkMenuRef}
                     onClick={(e) => {
                       e.stopPropagation();
+                      setMenuAnchorEl(e.currentTarget);
                       setOpenMenuId(openMenuId === bm.id ? null : bm.id);
                       setInlineEditId(null);
                     }}
@@ -651,7 +652,7 @@ export default function DraggableDashboard({
                   </button>
                   
                   {openMenuId === bm.id && (
-                    <PortalMenu anchorRef={bookmarkMenuRef} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
+                    <PortalMenu anchorEl={menuAnchorEl} className="w-48 bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-xl shadow-2xl py-1 animate-in fade-in zoom-in-95 duration-100 text-[13px]" dir="ltr">
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -694,7 +695,7 @@ export default function DraggableDashboard({
                   
                   {/* Inline Edit Popover */}
                   {inlineEditId === bm.id && (
-                    <PortalMenu anchorRef={bookmarkMenuRef} className="w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr">
+                    <PortalMenu anchorEl={menuAnchorEl} className="w-[300px] bg-white dark:bg-[#2C2C2E] border border-slate-900/10 dark:border-white/10 rounded-2xl shadow-2xl p-4 animate-in fade-in zoom-in-95 duration-100 flex flex-col gap-3" dir="ltr">
                       <input 
                         type="text" 
                         value={editUrl}
