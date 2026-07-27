@@ -1,7 +1,7 @@
-import React from 'react';
-import { X, User, LogOut, Copy } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, User, LogOut, Copy, UserPlus, Crown, Loader2, CheckCircle2 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, User as UserType } from '../contexts/AuthContext';
 
 interface SettingsScreenProps {
   pages?: {id: string, name: string}[];
@@ -11,7 +11,61 @@ interface SettingsScreenProps {
 
 export default function SettingsScreen({ onClose, categories, pages = [] }: SettingsScreenProps) {
   const { settings, updateSettings, resetSettings } = useSettings();
-  const { user, logout } = useAuth();
+  const { user, login, logout } = useAuth();
+
+  // Registration state inside Settings
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [isRegLoading, setIsRegLoading] = useState(false);
+  const [regError, setRegError] = useState('');
+  const [regSuccess, setRegSuccess] = useState('');
+
+  const handleRegisterInSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setRegError('');
+    setRegSuccess('');
+    setIsRegLoading(true);
+
+    try {
+      if (!regName.trim() || !regEmail.trim() || !regPassword.trim()) {
+        throw new Error('لطفاً تمام فیلدها را پر کنید.');
+      }
+
+      // Check existing local users
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
+      if (mockUsers.some((u: any) => u.email.toLowerCase() === regEmail.toLowerCase())) {
+        throw new Error('این ایمیل قبلاً ثبت شده است.');
+      }
+
+      const updatedUser: UserType = {
+        ...user,
+        name: regName.trim(),
+        email: regEmail.trim(),
+        provider: 'local'
+      };
+
+      // Save to mock users DB
+      mockUsers.push({
+        ...updatedUser,
+        password: regPassword,
+        createdAt: new Date().toISOString()
+      });
+      localStorage.setItem('mock_users_db', JSON.stringify(mockUsers));
+
+      // Perform sync & login with updated user profile
+      await login('user-token-' + Date.now(), updatedUser);
+
+      setRegSuccess(`حساب کاربری شما با موفقیت ثبت شد و به آیدی #${updatedUser.numericId} متصل گردید!`);
+      setShowRegisterForm(false);
+    } catch (err: any) {
+      setRegError(err.message || 'خطا در ثبت نام');
+    } finally {
+      setIsRegLoading(false);
+    }
+  };
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
     <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">{children}</h3>
@@ -25,7 +79,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
         
         {/* Header */}
         <div className="sticky top-0 bg-[#E5E9EC]/95 backdrop-blur z-10 px-6 py-5 border-b border-slate-300 flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight text-slate-700">Settings</h2>
+          <h2 className="text-lg font-bold tracking-tight text-slate-700">Settings / تنظیمات</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -33,33 +87,126 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
         <div className="p-6 space-y-8">
           
-          {/* Account Section */}
+          {/* Account & Registration Section */}
           {user && (
-            <section className="space-y-4">
-              <SectionTitle>Account</SectionTitle>
-              <div className="bg-slate-200/50 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-slate-300 flex items-center justify-center text-slate-500 overflow-hidden">
-                    {user.picture ? <img src={user.picture} alt={user.name} className="w-full h-full object-cover" /> : <User className="w-5 h-5" />}
+            <section className="space-y-4" dir="rtl">
+              <SectionTitle>حساب کاربری و ثبت نام</SectionTitle>
+              <div className="bg-slate-200/70 rounded-2xl p-4 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden shadow-sm shrink-0">
+                      {user.picture ? <img src={user.picture} alt={user.name} className="w-full h-full object-cover" /> : (user.name ? user.name.charAt(0).toUpperCase() : 'U')}
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-slate-800">{user.name}</span>
+                        {user.numericId && (
+                          <span className="bg-blue-600/10 text-blue-700 font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-blue-600/20">
+                            #{user.numericId}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-slate-500" dir="ltr">{user.email}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        {user.isPremium ? (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-700 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-600" /> کاربر پرمیوم (VIP)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] bg-slate-300 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                            {user.provider === 'guest' || user.email.includes('@local.app') ? 'اکانت مهمان' : 'کاربر ثبت‌شده'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-sm">{user.name}</span>
-                    <span className="text-xs text-slate-500">{user.email}</span>
-                    <span className="text-[10px] text-slate-400 mt-1 font-mono flex items-center gap-1 cursor-pointer hover:text-slate-600" onClick={() => {
-                      navigator.clipboard.writeText(user.id);
-                      alert('Account ID copied!');
-                    }}>
-                      ID: {user.id.substring(0, 16)}... <Copy className="w-3 h-3" />
-                    </span>
-                  </div>
+                  <button 
+                    onClick={logout}
+                    className="p-2 rounded-xl bg-slate-300/80 hover:bg-red-100 text-slate-600 hover:text-red-600 transition-colors"
+                    title="خروج از حساب"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
-                <button 
-                  onClick={logout}
-                  className="p-2 rounded-xl bg-slate-200 hover:bg-red-100 text-slate-500 hover:text-red-500 transition-colors"
-                  title="Sign out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
+
+                {regSuccess && (
+                  <div className="text-xs text-emerald-800 bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl font-medium flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    {regSuccess}
+                  </div>
+                )}
+
+                {/* Registration Form for Guest Users */}
+                {(user.provider === 'guest' || user.email.includes('@local.app')) && (
+                  <div className="pt-3 border-t border-slate-300/80 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <UserPlus className="w-4 h-4 text-blue-600" /> ثبت نام و حفظ اطلاعات در سرور
+                      </span>
+                      <button 
+                        onClick={() => setShowRegisterForm(!showRegisterForm)}
+                        className="text-xs text-blue-600 hover:underline font-bold"
+                      >
+                        {showRegisterForm ? 'بستن فرم' : 'تکمیل ثبت نام'}
+                      </button>
+                    </div>
+
+                    {showRegisterForm && (
+                      <form onSubmit={handleRegisterInSettings} className="flex flex-col gap-3 mt-1 bg-white/70 p-4 rounded-xl border border-slate-300 shadow-sm">
+                        {regError && (
+                          <div className="text-xs text-red-600 bg-red-100 border border-red-300 p-2 rounded-lg font-medium">{regError}</div>
+                        )}
+                        
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[11px] font-bold text-slate-600">نام و نام خانوادگی</label>
+                          <input 
+                            type="text" 
+                            required
+                            value={regName}
+                            onChange={e => setRegName(e.target.value)}
+                            placeholder="مثلاً: علی محمدی"
+                            className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[11px] font-bold text-slate-600">ایمیل</label>
+                          <input 
+                            type="email" 
+                            required
+                            value={regEmail}
+                            onChange={e => setRegEmail(e.target.value)}
+                            placeholder="email@example.com"
+                            className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
+                            dir="ltr"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[11px] font-bold text-slate-600">رمز عبور</label>
+                          <input 
+                            type="password" 
+                            required
+                            value={regPassword}
+                            onChange={e => setRegPassword(e.target.value)}
+                            placeholder="******"
+                            className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-left"
+                            dir="ltr"
+                          />
+                        </div>
+
+                        <button 
+                          type="submit"
+                          disabled={isRegLoading}
+                          className="mt-1 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
+                        >
+                          {isRegLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          ثبت نام و ذخیره در سرور (آیدی #{user.numericId})
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
           )}
