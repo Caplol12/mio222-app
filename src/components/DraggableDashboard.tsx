@@ -52,6 +52,28 @@ function PortalMenu({ anchorEl, children, className, dir }: {
     setPos({ top, left });
   }, [anchorEl]);
 
+  // Also recompute on scroll/resize in case the anchor moved
+  useEffect(() => {
+    if (!anchorEl) return;
+    const recompute = () => {
+      const rect = anchorEl.getBoundingClientRect();
+      const menuWidth = 192;
+      const menuHeight = 200;
+      let left = rect.right - menuWidth;
+      let top = rect.bottom + 4;
+      if (left < 8) left = 8;
+      if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+      if (top + menuHeight > window.innerHeight - 8) top = rect.top - menuHeight - 4;
+      setPos({ top, left });
+    };
+    window.addEventListener('scroll', recompute, true);
+    window.addEventListener('resize', recompute);
+    return () => {
+      window.removeEventListener('scroll', recompute, true);
+      window.removeEventListener('resize', recompute);
+    };
+  }, [anchorEl]);
+
   if (!pos) return null;
 
   return createPortal(
@@ -524,7 +546,8 @@ export default function DraggableDashboard({
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
-                  setMenuAnchorEl(e.currentTarget);
+                  const el = e.currentTarget;
+                  setMenuAnchorEl(el);
                   setOpenMenuId(openMenuId === `cat-${cat.id}` ? null : `cat-${cat.id}`);
                   setInlineEditId(null);
                 }}
@@ -641,7 +664,8 @@ export default function DraggableDashboard({
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setMenuAnchorEl(e.currentTarget);
+                      const el = e.currentTarget;
+                      setMenuAnchorEl(el);
                       setOpenMenuId(openMenuId === bm.id ? null : bm.id);
                       setInlineEditId(null);
                     }}
