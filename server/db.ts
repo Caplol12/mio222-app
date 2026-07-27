@@ -123,20 +123,24 @@ export const findUserByEmail = (email: string): DBUser | undefined => {
   return db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 };
 
-export const syncUserRecord = (userData: { id?: string; name?: string; email?: string; provider?: string }): DBUser => {
+export const syncUserRecord = (userData: { id?: string; numericId?: number; name?: string; email?: string; provider?: string }): DBUser => {
   let user: DBUser | undefined;
 
-  if (userData.email) {
-    user = findUserByEmail(userData.email);
-  }
-  if (!user && userData.id) {
+  if (userData.id) {
     user = findUserById(userData.id);
+  }
+  if (!user && userData.numericId) {
+    user = findUserById(userData.numericId);
+  }
+  if (!user && userData.email) {
+    user = findUserByEmail(userData.email);
   }
 
   if (user) {
     if (userData.name && userData.name !== user.name) user.name = userData.name;
+    if (userData.email && userData.email !== user.email) user.email = userData.email;
     if (userData.provider && userData.provider !== user.provider) user.provider = userData.provider;
-    if (!user.numericId) user.numericId = getNextNumericId();
+    if (!user.numericId) user.numericId = userData.numericId || getNextNumericId();
     if (user.isPremium === undefined) user.isPremium = false;
     saveDB();
     return user;

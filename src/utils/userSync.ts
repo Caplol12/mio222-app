@@ -84,18 +84,23 @@ export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<
   
   const existingIdx = currentUsers.findIndex(u => 
     u.id === targetUser.id || 
-    (u.email && targetUser.email && u.email.toLowerCase() === targetUser.email.toLowerCase()) ||
-    (u.numericId && targetUser.numericId && u.numericId === targetUser.numericId)
+    (u.numericId && targetUser.numericId && u.numericId === targetUser.numericId) ||
+    (u.email && targetUser.email && u.email.toLowerCase() === targetUser.email.toLowerCase())
   );
 
   let finalUser: UserRecord;
 
   if (existingIdx >= 0) {
+    const existing = currentUsers[existingIdx];
     currentUsers[existingIdx] = {
-      ...currentUsers[existingIdx],
+      ...existing,
       ...targetUser,
-      numericId: targetUser.numericId || currentUsers[existingIdx].numericId,
-      isPremium: targetUser.isPremium !== undefined ? targetUser.isPremium : currentUsers[existingIdx].isPremium
+      numericId: existing.numericId || targetUser.numericId,
+      id: existing.id || targetUser.id,
+      name: targetUser.name || existing.name,
+      email: targetUser.email || existing.email,
+      provider: targetUser.provider || existing.provider,
+      isPremium: targetUser.isPremium !== undefined ? targetUser.isPremium : existing.isPremium
     };
     finalUser = currentUsers[existingIdx];
   } else {

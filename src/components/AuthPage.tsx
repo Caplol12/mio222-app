@@ -13,7 +13,7 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { user: currentUser, login } = useAuth();
   const { getGlassStyle } = useGlassStyle();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,11 +46,14 @@ export default function AuthPage() {
         }
 
         const newUser = {
-          id: 'user_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36),
+          id: currentUser?.id || ('user_' + Math.random().toString(36).substring(2, 10)),
+          numericId: currentUser?.numericId,
           name: name || 'کاربر جدید',
           email,
-          password, // Stored only in local mock DB
-          picture: ''
+          password,
+          picture: '',
+          provider: 'local',
+          isPremium: currentUser?.isPremium || false
         };
 
         users.push(newUser);
