@@ -61,22 +61,13 @@ export default function AuthPage() {
   };
 
   const handleGuestLogin = async () => {
-    const guestId = 'guest_' + Math.random().toString(36).substring(2, 10);
     const guestUser = {
-      id: guestId,
+      id: 'guest_' + Math.random().toString(36).substring(2, 10),
       name: 'کاربر مهمان',
-      email: `guest_${guestId.substring(6, 12)}@local.app`,
+      email: 'guest@example.com',
       picture: '',
       provider: 'guest'
     };
-    // Sync guest to server DB so admin can see them, but use guest-token (no JWT)
-    try {
-      await fetch('/api/users/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(guestUser)
-      });
-    } catch {}
     await login('guest-token', guestUser);
     navigate('/');
   };

@@ -47,7 +47,7 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     }
   };
 
-  // 1. Fetch from server Admin API (authenticated)
+  // 1. Try local server Admin API (authenticated)
   try {
     const res = await fetch('/api/admin/users', {
       headers: getAuthHeaders()
@@ -63,10 +63,15 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     console.warn('Failed to fetch users from server admin API:', err);
   }
 
-  // 2. Merge current logged-in user from localStorage (for non-admin sessions where server API returns 401)
+  // 2. Merge from localStorage fallback (admin_users, mock_users_db, current user)
   try {
+    const adminUsers: UserRecord[] = JSON.parse(localStorage.getItem('admin_users') || '[]');
+    const mockUsers: UserRecord[] = JSON.parse(localStorage.getItem('mock_users_db') || '[]');
     const currentUser: UserRecord | null = JSON.parse(localStorage.getItem('user') || 'null');
-    if (currentUser) addOrMergeUser(currentUser);
+
+    [...adminUsers, ...mockUsers, currentUser].forEach(u => {
+      if (u) addOrMergeUser(u);
+    });
   } catch {}
 
   // Assign numeric IDs to any users missing one
