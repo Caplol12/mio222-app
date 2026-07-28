@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import { isSupabaseConfigured, supabaseRequest } from '../utils/supabaseClient';
+import LiveLogViewer from './LiveLogViewer';
+import { logger } from '../utils/logger';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -23,9 +25,11 @@ export default function AuthPage() {
     setIsLoading(true);
 
     const cleanEmail = email.trim().toLowerCase();
+    logger.info('ثبت‌نام/ورود', `شروع فرآیند ${isLogin ? 'ورود' : 'ثبت نام'} برای ایمیل: ${cleanEmail}`, { name, email: cleanEmail });
 
     try {
       if (!isSupabaseConfigured()) {
+        logger.warn('ثبت‌نام/ورود', 'تنظیمات Supabase یافت نشد، استفاده از حافظه محلی');
         // Fallback to local auth if Supabase keys are not set yet
         const mockUser = {
           id: 'user_' + Math.random().toString(36).substring(2, 9),
@@ -41,12 +45,14 @@ export default function AuthPage() {
       }
 
       if (isLogin) {
+        logger.info('Supabase-Auth', `ارسال درخواست ورود به Supabase Auth برای ${cleanEmail}`);
         // Auth with Supabase
         const authRes = await supabaseRequest('/auth/v1/token?grant_type=password', {
           method: 'POST',
           body: JSON.stringify({ email: cleanEmail, password })
         });
 
+        logger.success('Supabase-Auth', `ورود کاربر از طریق Supabase Auth موفقیت‌آمیز بود`, { userId: authRes.user?.id });
         const token = authRes.access_token;
         const user = {
           id: authRes.user?.id || 'sb_' + Math.random().toString(36).substring(2, 9),
@@ -60,6 +66,7 @@ export default function AuthPage() {
         await login(token, user);
         navigate('/');
       } else {
+        logger.info('Supabase-Auth', `ارسال درخواست ثبت‌نام کاربر جدید به Supabase Auth`, { name: name.trim(), email: cleanEmail });
         // Register with Supabase Auth
         const authRes = await supabaseRequest('/auth/v1/signup', {
           method: 'POST',
@@ -73,7 +80,10 @@ export default function AuthPage() {
         const registeredUser = authRes.user;
         const userId = registeredUser?.id;
 
+        logger.success('Supabase-Auth', `اکانت کاربر در Supabase Auth ساخته شد`, { userId, email: cleanEmail });
+
         if (userId) {
+          logger.info('Supabase-DB', `ارسال درخواست درج سطر کاربر به جدول public.profiles در دیتابیس Supabase`, { userId });
           // Insert profile into public.profiles table
           await supabaseRequest('/rest/v1/profiles', {
             method: 'POST',
@@ -87,7 +97,13 @@ export default function AuthPage() {
               provider: 'email',
               is_premium: false
             })
-          }).catch((e) => console.warn('Profiles insert fallback:', e));
+          }).then(() => {
+            logger.success('Supabase-DB', `اطلاعات کاربر با موفقیت در جدول profiles دیتابیس ذخیره شد!`);
+          }).catch((e) => {
+            logger.error('Supabase-DB', `خطا در ذخیره سطر در جدول profiles دیتابیس: ${e.message}`, { errorDetails: e });
+          });
+        } else {
+          logger.warn('Supabase-Auth', 'شناسه کاربر ثبت نام شده (userId) برگردانده نشد');
         }
 
         const token = authRes.access_token || 'reg-token';
@@ -104,6 +120,7 @@ export default function AuthPage() {
         navigate('/');
       }
     } catch (err: any) {
+      logger.error('ثبت‌نام/ورود', `خطای کلی در عملیات ثبت نام یا ورود: ${err.message}`, { errorStack: err.stack });
       setError(err.message || 'خطا در برقرار ارتباط با سرور دیتابیس Supabase');
     } finally {
       setIsLoading(false);
@@ -216,6 +233,10 @@ export default function AuthPage() {
             {isLogin ? 'ثبت نام کنید' : 'وارد شوید'}
           </button>
         </div>
+      </div>
+
+      <div className="w-full max-w-md z-10 px-4 mt-4">
+        <LiveLogViewer title="سیستم تصویری لاگر زنده ثبت‌نام و عیب‌یابی Supabase" defaultExpanded={true} />
       </div>
     </div>
   );
