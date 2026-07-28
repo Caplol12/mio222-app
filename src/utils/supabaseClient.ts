@@ -1,6 +1,11 @@
-// Clean client helper for Supabase REST API without external dependencies
-const getSupabaseConfig = () => {
-  // Check standard window runtime env fallback if injected by Vercel/HTML
+// Supabase REST Client lightweight implementation (No heavy SDK dependency)
+
+interface SupabaseConfig {
+  url: string;
+  key: string;
+}
+
+const getSupabaseConfig = (): SupabaseConfig => {
   const winEnv = (typeof window !== 'undefined' && (window as any).__ENV__) || {};
   
   const url = (
@@ -30,28 +35,55 @@ export const isSupabaseConfigured = (): boolean => {
   return Boolean(url && key);
 };
 
-export async function supabaseRequest(endpoint: string, options: RequestInit = {}) {
+export interface RequestOptions extends RequestInit {
+  authToken?: string; // Optional user JWT token for RLS authorized requests
+}
+
+/**
+ * Universal lightweight Supabase REST & Auth fetch wrapper
+ */
+export async function supabaseRequest<T = any>(
+  endpoint: string, 
+  options: RequestOptions = {}
+): Promise<T> {
   const { url, key } = getSupabaseConfig();
   if (!url || !key) {
-    throw new Error('تنظیمات Supabase (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY) هنوز ست نشده‌اند.');
+    throw new Error('تنظیمات Supabase (VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY) ست نشده‌اند.');
   }
 
-  const headers = {
+  const { authToken, headers: customHeaders, ...fetchOptions } = options;
+
+  // Use user token if available, otherwise fall back to anon key for Authorization header
+  const authHeader = authToken ? `Bearer ${authToken}` : `Bearer ${key}`;
+
+  const headers: HeadersInit = {
     'apikey': key,
-    'Authorization': `Bearer ${key}`,
+    'Authorization': authHeader,
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(customHeaders || {})
   };
 
   const response = await fetch(`${url}${endpoint}`, {
-    ...options,
+    ...fetchOptions,
     headers
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.msg || errorData.message || errorData.error_description || `خطای دیتابیس Supabase (${response.status})`);
+    const message = 
+      errorData.msg || 
+      errorData.message || 
+      errorData.error_description || 
+      errorData.details || 
+      `خطای Supabase (${response.status})`;
+    throw new Error(message);
   }
 
-  return response.json();
+  // Handle HTTP 204 No Content or empty response body (e.g., Prefer: return=minimal)
+  if (response.status === 204) {
+    return {} as T;
+  }
+
+  const text = await response.text();
+  return text ? JSON.parse(text) : ({} as T);
 }

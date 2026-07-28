@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import { isSupabaseConfigured, supabaseRequest } from '../utils/supabaseClient';
-import LiveLogViewer from './LiveLogViewer';
 import { logger } from '../utils/logger';
 
 export default function AuthPage() {
@@ -46,16 +45,21 @@ export default function AuthPage() {
 
       if (isLogin) {
         logger.info('Supabase-Auth', `ارسال درخواست ورود به Supabase Auth برای ${cleanEmail}`);
-        // Auth with Supabase
+        
+        // 1. Auth Login via Supabase REST API
         const authRes = await supabaseRequest('/auth/v1/token?grant_type=password', {
           method: 'POST',
           body: JSON.stringify({ email: cleanEmail, password })
         });
 
-        logger.success('Supabase-Auth', `ورود کاربر از طریق Supabase Auth موفقیت‌آمیز بود`, { userId: authRes.user?.id });
         const token = authRes.access_token;
+        const userId = authRes.user?.id;
+
+        logger.success('Supabase-Auth', `ورود کاربر از طریق Supabase Auth موفقیت‌آمیز بود`, { userId });
+
+        // Build User Object
         const user = {
-          id: authRes.user?.id || 'sb_' + Math.random().toString(36).substring(2, 9),
+          id: userId || 'sb_' + Math.random().toString(36).substring(2, 9),
           name: authRes.user?.user_metadata?.name || cleanEmail.split('@')[0],
           email: cleanEmail,
           picture: authRes.user?.user_metadata?.picture || '',
@@ -67,7 +71,8 @@ export default function AuthPage() {
         navigate('/');
       } else {
         logger.info('Supabase-Auth', `ارسال درخواست ثبت‌نام کاربر جدید به Supabase Auth`, { name: name.trim(), email: cleanEmail });
-        // Register with Supabase Auth
+        
+        // 1. SignUp via Supabase Auth REST API
         const authRes = await supabaseRequest('/auth/v1/signup', {
           method: 'POST',
           body: JSON.stringify({
@@ -79,34 +84,38 @@ export default function AuthPage() {
 
         const registeredUser = authRes.user;
         const userId = registeredUser?.id;
+        const token = authRes.access_token || '';
 
         logger.success('Supabase-Auth', `اکانت کاربر در Supabase Auth ساخته شد`, { userId, email: cleanEmail });
 
         if (userId) {
           logger.info('Supabase-DB', `ارسال درخواست درج سطر کاربر به جدول public.profiles در دیتابیس Supabase`, { userId });
-          // Insert profile into public.profiles table
-          await supabaseRequest('/rest/v1/profiles', {
-            method: 'POST',
-            headers: {
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({
-              id: userId,
-              name: name.trim() || 'کاربر جدید',
-              email: cleanEmail,
-              provider: 'email',
-              is_premium: false
-            })
-          }).then(() => {
+          
+          // 2. Insert profile record into public.profiles with upsert header & Auth bearer token
+          try {
+            await supabaseRequest('/rest/v1/profiles', {
+              method: 'POST',
+              authToken: token, // Pass user JWT token if session was created
+              headers: {
+                'Prefer': 'resolution=merge-duplicates,return=minimal'
+              },
+              body: JSON.stringify({
+                id: userId,
+                name: name.trim() || 'کاربر جدید',
+                email: cleanEmail,
+                provider: 'email',
+                is_premium: false
+              })
+            });
             logger.success('Supabase-DB', `اطلاعات کاربر با موفقیت در جدول profiles دیتابیس ذخیره شد!`);
-          }).catch((e) => {
+          } catch (e: any) {
             logger.error('Supabase-DB', `خطا در ذخیره سطر در جدول profiles دیتابیس: ${e.message}`, { errorDetails: e });
-          });
+            // Continue even if profile insert fails (e.g. handled by DB trigger)
+          }
         } else {
           logger.warn('Supabase-Auth', 'شناسه کاربر ثبت نام شده (userId) برگردانده نشد');
         }
 
-        const token = authRes.access_token || 'reg-token';
         const user = {
           id: userId || 'sb_' + Math.random().toString(36).substring(2, 9),
           name: name.trim() || 'کاربر جدید',
@@ -116,7 +125,7 @@ export default function AuthPage() {
           isPremium: false
         };
 
-        await login(token, user);
+        await login(token || 'reg-token', user);
         navigate('/');
       }
     } catch (err: any) {
@@ -206,7 +215,7 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 mt-2 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 mt-2 transition-colors flex items-center justify-center gap-2 cursor-cursor"
           >
             {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
             {isLogin ? 'ورود به حساب' : 'ایجاد حساب کاربری'}
