@@ -4,6 +4,28 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import { isSupabaseConfigured, supabaseRequest } from '../utils/supabaseClient';
+
+// Helper function to safely read supabase config directly inside component for debugging
+const getSupabaseConfig = () => {
+  const winEnv = (typeof window !== 'undefined' && (window as any).__ENV__) || {};
+  const url = (
+    import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env.SUPABASE_URL ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+    winEnv.VITE_SUPABASE_URL ||
+    winEnv.SUPABASE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const key = (
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    import.meta.env.SUPABASE_ANON_KEY ||
+    import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    winEnv.VITE_SUPABASE_ANON_KEY ||
+    winEnv.SUPABASE_ANON_KEY ||
+    ''
+  );
+  return { url, key };
+};
 import { logger } from '../utils/logger';
 
 export default function AuthPage() {
@@ -27,8 +49,11 @@ export default function AuthPage() {
     logger.info('ثبت‌نام/ورود', `شروع فرآیند ${isLogin ? 'ورود' : 'ثبت نام'} برای ایمیل: ${cleanEmail}`, { name, email: cleanEmail });
 
     try {
-      if (!isSupabaseConfigured()) {
-        logger.warn('ثبت‌نام/ورود', 'تنظیمات Supabase یافت نشد، استفاده از حافظه محلی');
+      const { url, key } = getSupabaseConfig();
+      if (!url || !key) {
+        const errorMsg = `تنظیمات Supabase ناقص است. \nURL: ${url ? 'دارد' : 'ندارد'} \nKey: ${key ? 'دارد' : 'ندارد'}`;
+        logger.warn('ثبت‌نام/ورود', errorMsg);
+        
         // Fallback to local auth if Supabase keys are not set yet
         const mockUser = {
           id: 'user_' + Math.random().toString(36).substring(2, 9),
