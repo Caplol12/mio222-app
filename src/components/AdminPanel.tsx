@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Settings, Users, Key, Save, ArrowLeft, Search, Plus, Trash2, XCircle, FileCode, Crown, UserCheck, UserX } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import { fetchAllSharedUsers, updateSharedUserPremiumStatus, updateSharedUserStatus, syncUserToSharedDatabase, UserRecord } from '../utils/userSync';
+import LiveLogViewer from './LiveLogViewer';
 
 // Types
 type User = UserRecord;
@@ -648,6 +649,11 @@ export default function AdminPanel() {
                 </div>
               </div>
             )}
+
+            {/* Live Error and Database Log Viewer */}
+            <div className="mt-8">
+              <LiveLogViewer title="لاگر زنده عیب‌یابی پنل مدیریت و دیتابیس کاربران" defaultExpanded={true} />
+            </div>
           </div>
         </div>
       </div>

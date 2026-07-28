@@ -3,6 +3,8 @@ import { Mail, Lock, User as UserIcon, ArrowRight, Sparkles, Loader2 } from 'luc
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
+import LiveLogViewer from './LiveLogViewer';
+import { logger } from '../utils/logger';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,39 +23,76 @@ export default function AuthPage() {
     setError('');
     setIsLoading(true);
 
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    const payload = isLogin 
+      ? { email: email.trim(), password } 
+      : { name: name.trim() || 'کاربر جدید', email: email.trim(), password };
+
+    logger.info('ثبت‌نام/ورود', `شروع درخواست ${isLogin ? 'ورود' : 'ثبت نام کاربر در دیتابیس'}`, {
+      endpoint,
+      email: email.trim(),
+      name: isLogin ? undefined : (name.trim() || 'کاربر جدید')
+    });
+
     try {
       if (isLogin) {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), password })
+          body: JSON.stringify(payload)
         });
         
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch((err) => {
+          logger.error('ثبت‌نام/ورود', 'خطا در پارس کردن پاسخ JSON سرور', { rawError: String(err) });
+          return {};
+        });
+
         if (!res.ok) {
-          throw new Error(data.error || 'ایمیل یا رمز عبور اشتباه است.');
+          const errMsg = data.error || 'ایمیل یا رمز عبور اشتباه است.';
+          logger.error('ثبت‌نام/ورود', `خطا در ورود کاربر (${res.status}): ${errMsg}`, {
+            status: res.status,
+            responseData: data,
+            requestEmail: email.trim()
+          });
+          throw new Error(errMsg);
         }
         
         const { token, user } = data;
+        logger.success('ثبت‌نام/ورود', `ورود کاربر با موفقیت تایید شد`, { user });
         await login(token, user);
         navigate('/');
       } else {
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim() || 'کاربر جدید', email: email.trim(), password })
+          body: JSON.stringify(payload)
         });
 
-        const data = await res.json().catch(() => ({}));
+        const data = await res.json().catch((err) => {
+          logger.error('ثبت‌نام/ورود', 'خطا در پارس کردن پاسخ JSON سرور هنگام ثبت نام', { rawError: String(err) });
+          return {};
+        });
+
         if (!res.ok) {
-          throw new Error(data.error || 'این ایمیل قبلاً ثبت شده است.');
+          const errMsg = data.error || 'این ایمیل قبلاً ثبت شده است.';
+          logger.error('ثبت‌نام/ورود', `خطا در ثبت نام کاربر در دیتابیس (${res.status}): ${errMsg}`, {
+            status: res.status,
+            responseData: data,
+            requestPayload: { email: email.trim(), name: name.trim() }
+          });
+          throw new Error(errMsg);
         }
 
         const { token, user } = data;
+        logger.success('ثبت‌نام/ورود', `کاربر جدید با موفقیت در دیتابیس ثبت شد`, { user });
         await login(token, user);
         navigate('/');
       }
     } catch (err: any) {
+      logger.error('ثبت‌نام/ورود', `خطای کلی فرآیند ${isLogin ? 'ورود' : 'ثبت نام'}`, {
+        errorMessage: err.message,
+        stack: err.stack
+      });
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -68,6 +107,7 @@ export default function AuthPage() {
       picture: '',
       provider: 'guest'
     };
+    logger.info('ثبت‌نام/ورود', 'ورود به عنوان کاربر مهمان', { guestUser });
     await login('guest-token', guestUser);
     navigate('/');
   };
@@ -166,6 +206,10 @@ export default function AuthPage() {
             {isLogin ? 'ثبت نام کنید' : 'وارد شوید'}
           </button>
         </div>
+      </div>
+
+      <div className="w-full max-w-md z-10 px-4 mt-4">
+        <LiveLogViewer title="لاگر زنده ثبت نام و عیب‌یابی دیتابیس" defaultExpanded={true} filterSource="ثبت‌نام/ورود" />
       </div>
     </div>
   );
