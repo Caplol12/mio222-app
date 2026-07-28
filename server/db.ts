@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const dbPath = process.env.VERCEL ? '/tmp/database.json' : path.join(process.cwd(), 'database.json');
+const dbPath = path.join(process.cwd(), 'database.json');
 
 export interface DBUser {
   id: string;
@@ -71,11 +71,7 @@ export const initDB = () => {
 };
 
 export const saveDB = () => {
-  try {
-    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
-  } catch (err) {
-    console.error("Failed to save DB:", err);
-  }
+  fs.writeFileSync(dbPath, JSON.stringify(db, null, 2));
 };
 
 export const getAllUsers = (): DBUser[] => {
