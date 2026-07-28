@@ -206,4 +206,6 @@ app.post("/api/admin/users/:id/status", requireAdmin, (req, res) => {
   }
 });
 
-export default app;
+export default function handler(req: any, res: any) {
+  return app(req, res);
+}
