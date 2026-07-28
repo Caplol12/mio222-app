@@ -60,7 +60,7 @@ export default function AuthPage() {
         await login(token, user);
         navigate('/');
       } else {
-        // Register with Supabase
+        // Register with Supabase Auth
         const authRes = await supabaseRequest('/auth/v1/signup', {
           method: 'POST',
           body: JSON.stringify({
@@ -70,9 +70,29 @@ export default function AuthPage() {
           })
         });
 
+        const registeredUser = authRes.user;
+        const userId = registeredUser?.id;
+
+        if (userId) {
+          // Insert profile into public.profiles table
+          await supabaseRequest('/rest/v1/profiles', {
+            method: 'POST',
+            headers: {
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({
+              id: userId,
+              name: name.trim() || 'کاربر جدید',
+              email: cleanEmail,
+              provider: 'email',
+              is_premium: false
+            })
+          }).catch((e) => console.warn('Profiles insert fallback:', e));
+        }
+
         const token = authRes.access_token || 'reg-token';
         const user = {
-          id: authRes.user?.id || 'sb_' + Math.random().toString(36).substring(2, 9),
+          id: userId || 'sb_' + Math.random().toString(36).substring(2, 9),
           name: name.trim() || 'کاربر جدید',
           email: cleanEmail,
           picture: '',
