@@ -234,10 +234,6 @@ export default function AuthPage() {
           </button>
         </div>
       </div>
-
-      <div className="w-full max-w-md z-10 px-4 mt-4">
-        <LiveLogViewer title="سیستم تصویری لاگر زنده ثبت‌نام و عیب‌یابی Supabase" defaultExpanded={true} />
-      </div>
     </div>
   );
 }
