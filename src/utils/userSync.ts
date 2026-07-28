@@ -1,5 +1,3 @@
-import { logger } from './logger';
-
 export interface UserRecord {
   id: string;
   numericId?: number;
@@ -23,7 +21,6 @@ const getAuthHeaders = (): Record<string, string> => {
 
 export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
   const mergedList: UserRecord[] = [];
-  logger.info('UserSync', 'درخواست دریافت لیست کامل کاربران سیستم...');
 
   const addOrMergeUser = (u: UserRecord) => {
     if (!u || (!u.id && !u.numericId && !u.email)) return;
@@ -59,14 +56,10 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     if (res.ok && contentType.includes('application/json')) {
       const data = await res.json();
       if (data && Array.isArray(data.users)) {
-        logger.success('UserSync', `تعداد ${data.users.length} کاربر از سرور دیتابیس دریافت شد`, { count: data.users.length });
         data.users.forEach(addOrMergeUser);
       }
-    } else {
-      logger.warn('UserSync', `خطا در دریافت لیست کاربران از API سرور (${res.status})`, { status: res.status, statusText: res.statusText });
     }
-  } catch (err: any) {
-    logger.error('UserSync', 'خطای شبکه یا سرور در دریافت لیست کاربران', { error: err.message });
+  } catch (err) {
     console.warn('Failed to fetch users from server admin API:', err);
   }
 
@@ -79,9 +72,7 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
     [...adminUsers, ...mockUsers, currentUser].forEach(u => {
       if (u) addOrMergeUser(u);
     });
-  } catch (err: any) {
-    logger.warn('UserSync', 'خطا در خواندن کاربران محلی localStorage', { error: err.message });
-  }
+  } catch {}
 
   // Assign numeric IDs to any users missing one
   let maxId = 1000;
@@ -101,33 +92,22 @@ export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
 };
 
 export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<UserRecord> => {
-  logger.info('UserSync', `شروع انطباق کاربر با دیتابیس: ${targetUser.email || targetUser.name}`, { targetUser });
   // Sync to local Node Express server
-  try {
-    const res = await fetch('/api/users/sync', {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(targetUser)
-    });
+  const res = await fetch('/api/users/sync', {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(targetUser)
+  });
 
-    if (res.status === 409) {
-      const msg = 'کاربری با این ایمیل از قبل وجود دارد';
-      logger.error('UserSync', `خطای تداخل (409) در دیتابیس: ${msg}`, { email: targetUser.email });
-      throw new Error(msg);
-    }
+  if (res.status === 409) {
+    throw new Error('کاربری با این ایمیل از قبل وجود دارد');
+  }
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.user) {
-        logger.success('UserSync', `کاربر با موفقیت در دیتابیس همگام‌سازی شد`, { syncedUser: data.user });
-        return data.user;
-      }
-    } else {
-      logger.error('UserSync', `پاسخ ناموفق سرور در همگام‌سازی کاربر (${res.status})`, { status: res.status });
+  if (res.ok) {
+    const data = await res.json();
+    if (data && data.user) {
+      return data.user;
     }
-  } catch (err: any) {
-    logger.error('UserSync', `خطا در فرایند sync کاربر در دیتابیس: ${err.message}`, { errorStack: err.stack });
-    throw err;
   }
 
   return targetUser;
@@ -135,21 +115,14 @@ export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<
 
 export const updateSharedUserPremiumStatus = async (idOrNumericId: string | number, makePremium: boolean): Promise<UserRecord[]> => {
   const strId = String(idOrNumericId).trim();
-  logger.info('UserSync', `تغییر وضعیت پریمیوم کاربر شناسه ${strId} به ${makePremium}`);
 
   try {
-    const res = await fetch(`/api/admin/users/${strId}/premium`, {
+    await fetch(`/api/admin/users/${strId}/premium`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ isPremium: makePremium })
     });
-    if (res.ok) {
-      logger.success('UserSync', `وضعیت پریمیوم کاربر شناسه ${strId} با موفقیت در دیتابیس به‌روزرسانی شد`);
-    } else {
-      logger.error('UserSync', `خطای سرور در آپدیت پریمیوم (${res.status})`, { status: res.status });
-    }
-  } catch (err: any) {
-    logger.error('UserSync', `خطای شبکه در بروزرسانی وضعیت پریمیوم: ${err.message}`);
+  } catch (err) {
     console.warn('Failed to update premium status on server:', err);
   }
 
@@ -158,21 +131,14 @@ export const updateSharedUserPremiumStatus = async (idOrNumericId: string | numb
 
 export const updateSharedUserStatus = async (idOrNumericId: string | number, status: 'active' | 'disabled'): Promise<UserRecord[]> => {
   const strId = String(idOrNumericId).trim();
-  logger.info('UserSync', `تغییر وضعیت فعال/غیرفعال کاربر شناسه ${strId} به ${status}`);
 
   try {
-    const res = await fetch(`/api/admin/users/${strId}/status`, {
+    await fetch(`/api/admin/users/${strId}/status`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ status })
     });
-    if (res.ok) {
-      logger.success('UserSync', `وضعیت کاربر شناسه ${strId} در دیتابیس تغییر کرد به ${status}`);
-    } else {
-      logger.error('UserSync', `خطای سرور در آپدیت وضعیت کاربر (${res.status})`, { status: res.status });
-    }
-  } catch (err: any) {
-    logger.error('UserSync', `خطای شبکه در بروزرسانی وضعیت کاربر: ${err.message}`);
+  } catch (err) {
     console.warn('Failed to update status on server:', err);
   }
 
