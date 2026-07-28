@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User as UserIcon, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
+import { isSupabaseConfigured, supabaseRequest } from '../utils/supabaseClient';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,7 +14,7 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
-  const { user: currentUser, login } = useAuth();
+  const { login } = useAuth();
   const { getGlassStyle } = useGlassStyle();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,40 +22,69 @@ export default function AuthPage() {
     setError('');
     setIsLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
+      if (!isSupabaseConfigured()) {
+        // Fallback to local auth if Supabase keys are not set yet
+        const mockUser = {
+          id: 'user_' + Math.random().toString(36).substring(2, 9),
+          name: name.trim() || cleanEmail.split('@')[0],
+          email: cleanEmail,
+          picture: '',
+          provider: 'local',
+          isPremium: false
+        };
+        await login('local-token', mockUser);
+        navigate('/');
+        return;
+      }
+
       if (isLogin) {
-        const res = await fetch('/api/auth/login', {
+        // Auth with Supabase
+        const authRes = await supabaseRequest('/auth/v1/token?grant_type=password', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), password })
+          body: JSON.stringify({ email: cleanEmail, password })
         });
-        
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || 'ایمیل یا رمز عبور اشتباه است.');
-        }
-        
-        const { token, user } = data;
+
+        const token = authRes.access_token;
+        const user = {
+          id: authRes.user?.id || 'sb_' + Math.random().toString(36).substring(2, 9),
+          name: authRes.user?.user_metadata?.name || cleanEmail.split('@')[0],
+          email: cleanEmail,
+          picture: authRes.user?.user_metadata?.picture || '',
+          provider: 'email',
+          isPremium: false
+        };
+
         await login(token, user);
         navigate('/');
       } else {
-        const res = await fetch('/api/auth/register', {
+        // Register with Supabase
+        const authRes = await supabaseRequest('/auth/v1/signup', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name.trim() || 'کاربر جدید', email: email.trim(), password })
+          body: JSON.stringify({
+            email: cleanEmail,
+            password,
+            data: { name: name.trim() || 'کاربر جدید' }
+          })
         });
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data.error || 'این ایمیل قبلاً ثبت شده است.');
-        }
+        const token = authRes.access_token || 'reg-token';
+        const user = {
+          id: authRes.user?.id || 'sb_' + Math.random().toString(36).substring(2, 9),
+          name: name.trim() || 'کاربر جدید',
+          email: cleanEmail,
+          picture: '',
+          provider: 'email',
+          isPremium: false
+        };
 
-        const { token, user } = data;
         await login(token, user);
         navigate('/');
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'خطا در برقرار ارتباط با سرور دیتابیس Supabase');
     } finally {
       setIsLoading(false);
     }
@@ -73,7 +103,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0A0A0B] bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center" dir="rtl">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0A0A0B] bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')] bg-cover bg-center" dir="rtl">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm z-0"></div>
       
       <div 
@@ -139,7 +169,7 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 mt-2 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl py-3 mt-2 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             {isLoading && <Loader2 className="w-5 h-5 animate-spin" />}
             {isLogin ? 'ورود به حساب' : 'ایجاد حساب کاربری'}
@@ -150,7 +180,7 @@ export default function AuthPage() {
           <button
             type="button"
             onClick={handleGuestLogin}
-            className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-xl py-3 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold rounded-xl py-3 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <UserIcon className="w-5 h-5" />
             ورود بدون ثبت نام (مهمان)
@@ -161,7 +191,7 @@ export default function AuthPage() {
           {isLogin ? 'حساب کاربری ندارید؟ ' : 'قبلاً ثبت نام کرده‌اید؟ '}
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-400 hover:text-blue-300 font-bold transition-colors"
+            className="text-blue-400 hover:text-blue-300 font-bold transition-colors cursor-pointer"
           >
             {isLogin ? 'ثبت نام کنید' : 'وارد شوید'}
           </button>
