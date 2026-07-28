@@ -149,7 +149,7 @@ export default function AdminPanel() {
 
   const toggleUserStatus = async (targetUser: User) => {
     const newStatus = targetUser.status === 'disabled' ? 'active' : 'disabled';
-    const targetId = targetUser.numericId || targetUser.id;
+    const targetId = String(targetUser.id);
     try {
       const updatedList = await updateSharedUserStatus(targetId, newStatus);
       setUsers(updatedList);
@@ -163,7 +163,7 @@ export default function AdminPanel() {
   };
 
   const handleTogglePremium = async (targetUser: User, makePremium: boolean) => {
-    const targetId = targetUser.numericId || targetUser.id;
+    const targetId = String(targetUser.id);
     try {
       const updatedList = await updateSharedUserPremiumStatus(targetId, makePremium);
       setUsers(updatedList);

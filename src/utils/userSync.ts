@@ -13,158 +13,115 @@ export interface UserRecord {
   status?: 'active' | 'disabled';
 }
 
-// Memory fallback store for when Supabase or network is offline
-const getLocalUsers = (): UserRecord[] => {
+const fromProfileRow = (row: any): UserRecord => ({
+  id: row.id,
+  numericId: row.numeric_id ?? undefined,
+  name: row.name,
+  email: row.email,
+  picture: row.picture || '',
+  provider: row.provider || 'email',
+  isPremium: !!row.is_premium,
+  isAdmin: !!row.is_admin,
+  status: row.status || 'active',
+  createdAt: row.created_at,
+});
+
+const toProfileRow = (user: Partial<UserRecord>) => ({
+  ...(user.id ? { id: user.id } : {}),
+  ...(user.name !== undefined ? { name: user.name } : {}),
+  ...(user.email !== undefined ? { email: user.email } : {}),
+  ...(user.picture !== undefined ? { picture: user.picture } : {}),
+  ...(user.provider !== undefined ? { provider: user.provider } : {}),
+  ...(user.isPremium !== undefined ? { is_premium: user.isPremium } : {}),
+  ...(user.status !== undefined ? { status: user.status } : {}),
+});
+
+const GUEST_KEY = 'guest_user_local';
+const isGuest = (user: Partial<UserRecord>) => !user.provider || user.provider === 'guest';
+
+export const syncUserToSharedDatabase = async (
+  targetUser: UserRecord,
+  authToken?: string
+): Promise<UserRecord> => {
+  if (isGuest(targetUser) || !isSupabaseConfigured()) {
+    localStorage.setItem(GUEST_KEY, JSON.stringify(targetUser));
+    return targetUser;
+  }
+
   try {
-    return JSON.parse(localStorage.getItem('shared_users_db') || '[]');
+    const rows = await supabaseRequest<any[]>('/rest/v1/profiles?on_conflict=id', {
+      method: 'POST',
+      authToken,
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(toProfileRow(targetUser)),
+    });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return row ? fromProfileRow(row) : targetUser;
+  } catch (e) {
+    console.warn('syncUserToSharedDatabase: Supabase sync failed', e);
+    return targetUser;
+  }
+};
+
+export const fetchUserStatus = async (id: string, authToken?: string): Promise<UserRecord | null> => {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const rows = await supabaseRequest<any[]>(
+      `/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`,
+      { authToken }
+    );
+    return rows && rows[0] ? fromProfileRow(rows[0]) : null;
   } catch {
+    return null;
+  }
+};
+
+export const fetchAllSharedUsers = async (authToken?: string): Promise<UserRecord[]> => {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const rows = await supabaseRequest<any[]>(
+      '/rest/v1/profiles?select=*&order=created_at.desc',
+      { authToken }
+    );
+    return (rows || []).map(fromProfileRow);
+  } catch (e) {
+    console.warn('fetchAllSharedUsers: Supabase fetch failed (check admin RLS policy)', e);
     return [];
   }
 };
 
-const saveLocalUsers = (users: UserRecord[]) => {
+export const updateSharedUserPremiumStatus = async (
+  id: string,
+  makePremium: boolean,
+  authToken?: string
+): Promise<UserRecord[]> => {
   try {
-    localStorage.setItem('shared_users_db', JSON.stringify(users));
-  } catch {}
-};
-
-export const fetchAllSharedUsers = async (): Promise<UserRecord[]> => {
-  if (isSupabaseConfigured()) {
-    try {
-      const data = await supabaseRequest('/rest/v1/profiles?select=*', { method: 'GET' });
-      // Map Supabase snake_case to UserRecord camelCase
-      if (Array.isArray(data)) {
-        return data.map((u: any) => ({
-          ...u,
-          numericId: u.numeric_id,
-          isPremium: u.is_premium,
-          isAdmin: u.is_admin,
-          createdAt: u.created_at
-        }));
-      }
-    } catch (e) {
-      console.warn('Failed to fetch from Supabase, falling back to local.', e);
-    }
-  }
-
-  const local = getLocalUsers();
-  
-  // Assign numeric IDs if missing
-  let maxId = 1000;
-  local.forEach(u => {
-    if (u.numericId && Number(u.numericId) > maxId) maxId = Number(u.numericId);
-  });
-  local.forEach(u => {
-    if (!u.numericId) {
-      maxId++;
-      u.numericId = maxId;
-    }
-    if (u.isPremium === undefined) u.isPremium = false;
-    if (!u.status) u.status = 'active';
-  });
-
-  return local;
-};
-
-export const syncUserToSharedDatabase = async (targetUser: UserRecord): Promise<UserRecord> => {
-  if (isSupabaseConfigured() && targetUser.id && !targetUser.id.startsWith('guest_')) {
-    try {
-      await supabaseRequest('/rest/v1/profiles', {
-        method: 'POST',
-        headers: {
-          'Prefer': 'resolution=merge-duplicates,return=representation'
-        },
-        body: JSON.stringify({
-          id: targetUser.id,
-          name: targetUser.name,
-          email: targetUser.email,
-          picture: targetUser.picture,
-          provider: targetUser.provider,
-          is_premium: targetUser.isPremium,
-          is_admin: targetUser.isAdmin,
-          status: targetUser.status
-        })
-      });
-      return targetUser;
-    } catch (e) {
-      console.warn('Failed to sync to Supabase, falling back to local.', e);
-    }
-  }
-
-  const local = getLocalUsers();
-  const existingIdx = local.findIndex(u => 
-    (u.id && targetUser.id && u.id === targetUser.id) ||
-    (u.email && targetUser.email && u.email.toLowerCase() === targetUser.email.toLowerCase())
-  );
-
-  if (existingIdx >= 0) {
-    local[existingIdx] = {
-      ...local[existingIdx],
-      ...targetUser,
-      numericId: local[existingIdx].numericId || targetUser.numericId
-    };
-  } else {
-    let maxId = 1000;
-    local.forEach(u => {
-      if (u.numericId && Number(u.numericId) > maxId) maxId = Number(u.numericId);
+    await supabaseRequest(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      authToken,
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ is_premium: makePremium }),
     });
-    const newUser = {
-      ...targetUser,
-      numericId: targetUser.numericId || maxId + 1,
-      status: targetUser.status || 'active',
-      isPremium: targetUser.isPremium || false
-    };
-    local.push(newUser);
+  } catch (e) {
+    console.warn('updateSharedUserPremiumStatus: Supabase update failed', e);
   }
-
-  saveLocalUsers(local);
-  return targetUser;
+  return fetchAllSharedUsers(authToken);
 };
 
-export const updateSharedUserPremiumStatus = async (idOrNumericId: string | number, makePremium: boolean): Promise<UserRecord[]> => {
-  const strId = String(idOrNumericId).trim();
-
-  if (isSupabaseConfigured() && typeof idOrNumericId === 'string' && idOrNumericId.startsWith('sb_')) {
-    try {
-      await supabaseRequest(`/rest/v1/profiles?id=eq.${strId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ is_premium: makePremium })
-      });
-      return fetchAllSharedUsers();
-    } catch (e) {
-      console.warn('Supabase PATCH failed', e);
-    }
+export const updateSharedUserStatus = async (
+  id: string,
+  status: 'active' | 'disabled',
+  authToken?: string
+): Promise<UserRecord[]> => {
+  try {
+    await supabaseRequest(`/rest/v1/profiles?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      authToken,
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ status }),
+    });
+  } catch (e) {
+    console.warn('updateSharedUserStatus: Supabase update failed', e);
   }
-
-  const local = getLocalUsers();
-  const user = local.find(u => u.id === strId || String(u.numericId) === strId);
-  if (user) {
-    user.isPremium = makePremium;
-    saveLocalUsers(local);
-  }
-  return fetchAllSharedUsers();
-};
-
-export const updateSharedUserStatus = async (idOrNumericId: string | number, status: 'active' | 'disabled'): Promise<UserRecord[]> => {
-  const strId = String(idOrNumericId).trim();
-
-  if (isSupabaseConfigured() && typeof idOrNumericId === 'string' && idOrNumericId.startsWith('sb_')) {
-    try {
-      await supabaseRequest(`/rest/v1/profiles?id=eq.${strId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status })
-      });
-      return fetchAllSharedUsers();
-    } catch (e) {
-      console.warn('Supabase PATCH failed', e);
-    }
-  }
-
-  const local = getLocalUsers();
-  const user = local.find(u => u.id === strId || String(u.numericId) === strId);
-  if (user) {
-    user.status = status;
-    saveLocalUsers(local);
-  }
-  return fetchAllSharedUsers();
+  return fetchAllSharedUsers(authToken);
 };

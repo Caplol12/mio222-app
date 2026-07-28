@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { UserRecord, fetchAllSharedUsers, syncUserToSharedDatabase } from '../utils/userSync';
+import { UserRecord, fetchUserStatus, syncUserToSharedDatabase } from '../utils/userSync';
 
 export type User = UserRecord;
 
@@ -26,9 +26,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const syncUserWithServer = useCallback(async (targetUser: User): Promise<User> => {
+  const syncUserWithServer = useCallback(async (targetUser: User, authToken?: string): Promise<User> => {
     try {
-      const syncedUser = await syncUserToSharedDatabase(targetUser);
+      const syncedUser = await syncUserToSharedDatabase(targetUser, authToken);
       setUser(syncedUser);
       localStorage.setItem('user', JSON.stringify(syncedUser));
       return syncedUser;
@@ -41,10 +41,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserStatus = useCallback(async (): Promise<User | null> => {
-    if (!user) return null;
+    if (!user || !token) return null;
     try {
-      const allUsers = await fetchAllSharedUsers();
-      const match = allUsers.find(u => u.id === user.id || (u.numericId && u.numericId === user.numericId));
+      const match = await fetchUserStatus(user.id, token);
       if (match) {
         const updated = { ...user, ...match };
         setUser(updated);
@@ -55,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Failed to refresh user status:', err);
     }
     return user;
-  }, [user]);
+  }, [user, token]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token');
@@ -65,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        syncUserWithServer(parsedUser);
+        syncUserWithServer(parsedUser, storedToken);
       } catch {}
     } else {
       // Automatic first visit guest registration
@@ -88,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (newToken: string, newUser: User): Promise<User> => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
-    const synced = await syncUserWithServer(newUser);
+    const synced = await syncUserWithServer(newUser, newToken);
     return synced;
   };
 
@@ -107,6 +106,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => useContext(AuthContext);
-
-
-
