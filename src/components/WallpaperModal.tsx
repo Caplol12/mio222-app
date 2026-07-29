@@ -10,6 +10,10 @@ interface WallpaperModalProps {
 
 const PRESETS = [
   // Local Custom Wallpapers
+  { type: 'image', url: '/wallpapers/anime-girl-and-her-majestic-dragon-y0.webp' },
+  { type: 'image', url: '/wallpapers/iron-man-crusader-of-justice-gq.webp' },
+  { type: 'image', url: '/wallpapers/win-11-5k-fc.webp' },
+  { type: 'image', url: '/wallpapers/windows-11-oled-32.webp' },
   { type: 'image', url: '/wallpapers/bg1.jpg' },
   { type: 'image', url: '/wallpapers/bg2.jpg' },
   { type: 'image', url: '/wallpapers/bg3.jpg' },
