@@ -335,8 +335,8 @@ export default function BookmarkGrid({
         <div className="flex items-center justify-between w-full mb-8" dir="ltr">
           <div className="flex items-center gap-3">
             {/* Tabs Container matching uploaded UI design */}
-            <div className="flex items-center bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-full p-1.5 shadow-lg shadow-black/5 gap-1 select-none">
-              {pages.map(page => {
+            <div className="flex items-center bg-[#F8F4EE] dark:bg-[#1E1E20]/90 backdrop-blur-xl border border-[#E6E0D6] dark:border-white/10 rounded-full p-1.5 shadow-md shadow-black/5 gap-1 select-none">
+              {pages.map((page, index) => {
                 const isActive = activePage === page.id;
                 const isEditing = editingPageId === page.id;
 
@@ -344,7 +344,7 @@ export default function BookmarkGrid({
                   return (
                     <div 
                       key={page.id}
-                      className="px-4 py-1.5 rounded-full bg-[var(--color-primary)] text-white font-medium shadow-md flex items-center"
+                      className="px-4 py-1.5 rounded-lg bg-[#7A736B] text-white font-medium shadow-sm flex items-center"
                     >
                       <input
                         type="text"
@@ -356,7 +356,7 @@ export default function BookmarkGrid({
                           if (e.key === "Enter") handleSavePageName(page.id);
                           if (e.key === "Escape") setEditingPageId(null);
                         }}
-                        className="bg-blue-600 text-white font-semibold text-sm px-1.5 py-0.5 rounded outline-none w-24 text-center select-all"
+                        className="bg-transparent text-white font-semibold text-sm px-1 py-0.5 outline-none w-24 text-center select-all"
                       />
                     </div>
                   );
@@ -365,6 +365,25 @@ export default function BookmarkGrid({
                 return (
                   <button
                     key={page.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("page_index", index.toString());
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const dragIndexStr = e.dataTransfer.getData("page_index");
+                      if (!dragIndexStr) return;
+                      const dragIndex = parseInt(dragIndexStr, 10);
+                      if (isNaN(dragIndex) || dragIndex === index) return;
+                      
+                      const updatedPages = [...pages];
+                      const [movedPage] = updatedPages.splice(dragIndex, 1);
+                      updatedPages.splice(index, 0, movedPage);
+                      setPages(updatedPages);
+                    }}
                     onClick={() => setActivePage(page.id)}
                     onDoubleClick={() => {
                       setEditingPageId(page.id);
@@ -374,10 +393,10 @@ export default function BookmarkGrid({
                       e.preventDefault();
                       setPageContextMenu({ x: e.clientX, y: e.clientY, pageId: page.id });
                     }}
-                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer ${
                       isActive 
-                        ? 'bg-[var(--color-primary)] text-white shadow-md font-semibold' 
-                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#7A736B] text-white font-semibold shadow-sm' 
+                        : 'text-[#4A453F] dark:text-slate-300 hover:bg-[#EAE4DC] dark:hover:bg-white/10 hover:text-[#2C2825] dark:hover:text-white'
                     }`}
                   >
                     {page.name}
@@ -387,7 +406,7 @@ export default function BookmarkGrid({
               
               <button
                 onClick={handleAddNewPage}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors text-lg font-light ml-0.5"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-[#6E675F] dark:text-slate-400 hover:bg-[#EAE4DC] dark:hover:bg-white/10 hover:text-[#2C2825] dark:hover:text-white transition-colors text-lg font-light ml-0.5 cursor-pointer"
                 title="افزودن صفحه جدید"
               >
                 +
