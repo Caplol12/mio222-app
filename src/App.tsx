@@ -558,8 +558,25 @@ export default function App() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className={getAppClasses()} style={appSettings.backgroundType === 'image' ? { backgroundImage: `url(${appSettings.backgroundUrl})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" } : appSettings.backgroundType === 'gradient' ? { background: appSettings.backgroundUrl } : {}}>
-      
+    <div className={getAppClasses()}>
+      {/* Responsive & Mobile-friendly Background Image / Gradient Layer */}
+      {appSettings.backgroundType === 'image' && appSettings.backgroundUrl && (
+        <div 
+          className="fixed inset-0 w-full h-full pointer-events-none z-[-2] bg-cover bg-center bg-no-repeat transition-all duration-500"
+          style={{ 
+            backgroundImage: `url(${appSettings.backgroundUrl})`,
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)'
+          }}
+        />
+      )}
+
+      {appSettings.backgroundType === 'gradient' && appSettings.backgroundUrl && (
+        <div 
+          className="fixed inset-0 w-full h-full pointer-events-none z-[-2] transition-all duration-500"
+          style={{ background: appSettings.backgroundUrl }}
+        />
+      )}
 
       {appSettings.backgroundType === 'video' && appSettings.backgroundUrl && (
         <video 
