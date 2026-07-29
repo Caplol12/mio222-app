@@ -82,9 +82,13 @@ export default function AuthPage() {
 
         logger.success('Supabase-Auth', `ورود کاربر از طریق Supabase Auth موفقیت‌آمیز بود`, { userId });
 
+        if (!userId) {
+          throw new Error('شناسه کاربر معتبر (UUID) از Supabase دریافت نشد.');
+        }
+
         // Build User Object
         const user = {
-          id: userId || 'sb_' + Math.random().toString(36).substring(2, 9),
+          id: userId,
           name: authRes.user?.user_metadata?.name || cleanEmail.split('@')[0],
           email: cleanEmail,
           picture: authRes.user?.user_metadata?.picture || '',
@@ -139,10 +143,11 @@ export default function AuthPage() {
           }
         } else {
           logger.warn('Supabase-Auth', 'شناسه کاربر ثبت نام شده (userId) برگردانده نشد');
+          setError('ثبت‌نام انجام شد. اگر تأیید ایمیل در Supabase فعال است، لطفاً ایمیل خود را بررسی کنید.');
+          return;
         }
-
         const user = {
-          id: userId || 'sb_' + Math.random().toString(36).substring(2, 9),
+          id: userId,
           name: name.trim() || 'کاربر جدید',
           email: cleanEmail,
           picture: '',
