@@ -14,9 +14,6 @@ const PRESETS = [
   { type: 'image', url: '/wallpapers/iron-man-crusader-of-justice-gq.webp' },
   { type: 'image', url: '/wallpapers/win-11-5k-fc.webp' },
   { type: 'image', url: '/wallpapers/windows-11-oled-32.webp' },
-  { type: 'image', url: '/wallpapers/bg1.jpg' },
-  { type: 'image', url: '/wallpapers/bg2.jpg' },
-  { type: 'image', url: '/wallpapers/bg3.jpg' },
   
   // Anime style / Digital Art
   { type: 'image', url: 'https://images.unsplash.com/photo-1578637387939-43c525550085?q=80&w=2048&auto=format&fit=crop' },
