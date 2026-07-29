@@ -216,16 +216,14 @@ export default function App() {
     const targetCat = categories.find(c => c.id === id);
     const catName = targetCat?.name;
 
-    if (confirm("آیا از حذف این پوشه و تمام بوکمارک‌های درون آن اطمینان دارید؟")) {
-      setCategories(prev => {
-        const updated = prev.filter(c => c.id !== id);
-        localStorage.setItem("stash_categories", JSON.stringify(updated));
-        return updated;
-      });
-      saveBookmarks(prev => prev.filter(b => b.category !== id && (catName ? b.category !== catName : true)));
-      if (activeCategory === id) {
-        setActiveCategory("all");
-      }
+    setCategories(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      localStorage.setItem("stash_categories", JSON.stringify(updated));
+      return updated;
+    });
+    saveBookmarks(prev => prev.filter(b => b.category !== id && (catName ? b.category !== catName : true)));
+    if (activeCategory === id) {
+      setActiveCategory("all");
     }
   }, [categories, activeCategory, saveBookmarks]);
 
