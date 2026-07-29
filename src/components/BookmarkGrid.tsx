@@ -330,12 +330,12 @@ export default function BookmarkGrid({
     <div className="flex-1 min-w-0 w-full flex flex-col font-sans transition-colors duration-300 pb-20 lg:pb-8">
       
       {/* Header Section */}
-      <div className="px-4 sm:px-6 md:px-8 py-5 sticky top-0 z-30 flex items-center justify-between gap-4 mt-2" dir="ltr">
+      <div className="px-3 sm:px-6 md:px-8 py-3 sm:py-5 sticky top-0 z-30 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-2" dir="ltr">
         {/* Pages Tabs, Search, and Focus Widget */}
-        <div className="flex items-center justify-between w-full mb-8" dir="ltr">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between w-full min-w-0 gap-2" dir="ltr">
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
             {/* Tabs Container matching uploaded UI design */}
-            <div className="flex items-center bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-2xl p-1.5 shadow-lg shadow-black/5 gap-1 select-none">
+            <div className="flex items-center bg-white/90 dark:bg-[#1E1E20]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/10 rounded-2xl p-1.5 shadow-lg shadow-black/5 gap-1 select-none overflow-x-auto max-w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {pages.map((page, index) => {
                 const isActive = activePage === page.id;
                 const isEditing = editingPageId === page.id;
@@ -456,16 +456,14 @@ export default function BookmarkGrid({
       <div className="flex-1 px-4 sm:px-6 md:px-8 py-8 w-full">
         
         {/* Title, Color Picker, and View Mode toggler */}
-        <div className="flex flex-wrap items-end justify-between gap-4 mb-8 select-none">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-6 select-none">
           <div className="flex items-center gap-6">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">{currentCategoryName}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{currentCategoryName}</h2>
             </div>
-            
-            
           </div>
           {/* Icon/List View switcher & Filters Toggle */}
-          <div className="flex flex-col items-end gap-3">
+          <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-2 sm:gap-3 flex-wrap">
             <div className="flex bg-slate-900/5 dark:bg-white/5 rounded-full p-1 gap-1">
               <button
                 onClick={() => setViewMode("dashboard")}
