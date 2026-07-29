@@ -14,7 +14,7 @@ const getSupabaseConfig = (): SupabaseConfig => {
     import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
     winEnv.VITE_SUPABASE_URL ||
     winEnv.SUPABASE_URL ||
-    ''
+    'https://fusztvpoasvabehjurhm.supabase.co'
   ).replace(/\/$/, '');
 
   const key = (
@@ -24,7 +24,7 @@ const getSupabaseConfig = (): SupabaseConfig => {
     import.meta.env.SUPABASE_SERVICE_ROLE_KEY ||
     winEnv.VITE_SUPABASE_ANON_KEY ||
     winEnv.SUPABASE_ANON_KEY ||
-    ''
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1c3p0dnBvYXN2YWJlaGp1cmhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNDAzMDgsImV4cCI6MjEwMDgxNjMwOH0.uu9Kjsup--EjJetSFYnWvexyRRKnprT9YYK6yNGtrOU'
   );
 
   return { url, key };
