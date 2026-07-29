@@ -11,12 +11,8 @@ interface WallpaperModalProps {
 const PRESETS = [
   // Local Custom Wallpapers
   { type: 'image', url: '/wallpapers/anime-girl-and-her-majestic-dragon-y0.webp' },
-  { type: 'image', url: '/wallpapers/d7265700-d7ba-4dc4-a8fb-391d111df709.webp' },
   { type: 'image', url: '/wallpapers/iron-man-crusader-of-justice-gq.webp' },
-  { type: 'image', url: '/wallpapers/japan-artistic-3840x2160-25406.webp' },
-  { type: 'image', url: '/wallpapers/uwp5068026.webp' },
   { type: 'image', url: '/wallpapers/win-11-5k-fc.webp' },
-  { type: 'image', url: '/wallpapers/windows-11-dark-mode-abstract-background-black-background-3840x2160-8710.webp' },
   { type: 'image', url: '/wallpapers/windows-11-oled-32.webp' },
   
   // Anime style / Digital Art
