@@ -28,7 +28,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
       <button 
         title="جستجو" 
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <Search className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -37,7 +37,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
         title="پس‌زمینه" 
         onClick={onOpenWallpaper} 
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <ImageIcon className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -46,7 +46,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
         title="ویجت‌ها" 
         onClick={onToggleWidgets} 
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <LayoutGrid className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -56,7 +56,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
         title="وارد کردن نشانک‌ها" 
         onClick={onOpenImport}
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <Download className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -67,7 +67,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
         title="هوش مصنوعی" 
         onClick={onToggleAIChat}
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <Bot className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -79,7 +79,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
         title="پنل مدیریت" 
         onClick={() => navigate('/admin')}
         style={buttonStyle}
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full text-slate-900 dark:text-white/80 hover:text-slate-900 dark:text-white transition-all shadow-sm border border-white/10 hover:scale-105"
       >
         <ShieldCheck className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>
@@ -88,7 +88,7 @@ export default function RightSidebar({ onOpenSettings, onOpenWallpaper, onToggle
       <button 
         title="تنظیمات" 
         onClick={onOpenSettings} 
-        className="w-10 h-10 md:w-[50px] md:h-[50px] flex items-center justify-center rounded-full bg-[var(--color-primary)] text-slate-900 dark:text-white transition-all shadow-lg hover:scale-105 border border-white/10"
+        className="w-10 h-10 md:w-[50px] md:h-[50px] shrink-0 aspect-square flex items-center justify-center rounded-full bg-[var(--color-primary)] text-slate-900 dark:text-white transition-all shadow-lg hover:scale-105 border border-white/10"
       >
         <Settings className="w-4 h-4 md:w-5 md:h-5 stroke-[1.5]" />
       </button>

@@ -191,9 +191,11 @@ export default function App() {
         }
 
         if (targetCategoryName && categoryNameToId[targetCategoryName]) {
+          const targetCatId = categoryNameToId[targetCategoryName];
           return {
             ...bm,
-            categoryId: categoryNameToId[targetCategoryName],
+            category: targetCatId,
+            categoryId: targetCatId,
             pageId: aiPageId
           };
         }
