@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, User, Loader2, Settings, Key, Trash2, CheckCircle2, Cpu } from 'lucide-react';
+import { X, Send, Bot, User, Loader2, Settings, Key, Trash2, CheckCircle2, Cpu, Crown } from 'lucide-react';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '../contexts/AuthContext';
 
 import { Bookmark, CategoryItem } from '../types';
 
@@ -19,15 +20,27 @@ interface Message {
 }
 
 export const AVAILABLE_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'سریع و بهینه‌شده (پیش‌فرض)' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'پاسخ‌دهی پیشرفته و دقیق' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'سرعت فوق‌العاده بالا' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: 'پشتیبانی متن‌های طولانی' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'سبک و اقتصادی' },
+  // Gemini Models (Free / Standard)
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', desc: 'سریع و بهینه‌شده (پیش‌فرض)', provider: 'gemini', isPremium: false },
+  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', desc: 'پاسخ‌دهی پیشرفته و دقیق', provider: 'gemini', isPremium: false },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'سرعت فوق‌العاده بالا', provider: 'gemini', isPremium: false },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', desc: 'پشتیبانی متن‌های طولانی', provider: 'gemini', isPremium: false },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'سبک و اقتصادی', provider: 'gemini', isPremium: false },
+
+  // NVIDIA Premium Models
+  { id: 'z-ai/glm-5.2', name: 'GLM 5.2', desc: 'مدل قدرتمند NVIDIA (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
+  { id: 'minimax/minimax-3', name: 'Minimax 3', desc: 'پردازش فوق هوشمند NVIDIA (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
+  { id: 'deepseek-ai/deepseek-v4-flash', name: 'DeepSeek V4 Flash', desc: 'مدل فست DeepSeek v4 (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
+  { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: 'نسخه پرو DeepSeek v4 (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
+  { id: 'minimax/minimax-2.7', name: 'Minimax 2.7', desc: 'مدل استدلال Minimax 2.7 (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
+  { id: 'mistralai/mistral-128b', name: 'Mistral 128B', desc: 'مدل سنگین 128B میاسترال (پرمیوم 👑)', provider: 'nvidia', isPremium: true },
 ];
+
+const NVIDIA_DEV_KEY = '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';
 
 export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, onOrganizeBookmarks }: AIChatPanelProps) {
   const { getGlassStyle } = useGlassStyle();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const stored = localStorage.getItem('ai_chat_history');
@@ -218,10 +231,97 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
     }
   };
 
+  const callNvidiaApi = async (userMessage: string, history: Message[], modelToUse: string): Promise<string> => {
+    const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید.
+
+قوانین و مراحل مرتب‌سازی هوشمند نشانک‌ها:
+۱. اگر کاربر اولین بار گفت "نشانک‌ها را مرتب کن" یا روی دستور مرتب‌سازی کلیک کرد، اما هنوز **استایل و معیار دسته‌بندی** (مثل استاندارد، ریز‌موضوعات، خلاقانه، طنز، بر اساس کاربرد یا زبان) را مشخص نکرده است:
+   - نباید هنوز JSON تولید کنی!
+   - از کاربر بصورت صمیمی و شفاف بپرس که ترجیح می‌دهد نشانک‌ها با چه استایل و معیاری در پوشه‌ها دسته‌بندی شوند.
+
+۲. اگر کاربر استایل را مشخص کرد (یا در پیام خود استایل و نحوه مرتب‌سازی را ذکر نمود):
+   - تمام نشانک‌ها را تحلیل کن و دقیقا بر اساس همان استایل خواسته شده، دسته‌بندی‌ها (پوشه‌ها) را بساز.
+   - حتماً خروجی خود را دقیقاً با این فرمت JSON در انتهای پاسخ قرار بده تا سیستم بتواند آن را در صفحه ai list اجرا کند:
+
+\`\`\`json
+{
+  "action": "organize_ai_list",
+  "categories": ["نام پوشه ۱", "نام پوشه ۲", ...],
+  "assignments": {
+    "نام پوشه ۱": ["id_bookmark_1", "id_bookmark_2"],
+    "نام پوشه ۲": ["id_bookmark_3"]
+  }
+}
+\`\`\`
+
+اطلاعات فعلی:
+دسته بندی ها: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name })))}
+نشانک ها: ${JSON.stringify(bookmarks.map(b => ({ id: b.id, title: b.title, domain: b.domain, description: b.description, tags: b.tags })))}`;
+
+    const openAiMessages = [
+      { role: 'system', content: systemPrompt },
+      ...history.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })),
+      { role: 'user', content: userMessage }
+    ];
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+    try {
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${NVIDIA_DEV_KEY}`
+        },
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: openAiMessages,
+          temperature: 0.7,
+          top_p: 1,
+          max_tokens: 2048
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401) throw new Error('کلید سرور NVIDIA نامعتبر است.');
+        if (response.status === 429) throw new Error('محدودیت درخواست سرور NVIDIA. لطفاً لحظاتی بعد امتحان کنید.');
+        throw new Error(`خطای سرور انویدیا (${response.status}): ${errorText.substring(0, 100)}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error('پاسخی از سرور NVIDIA دریافت نشد.');
+
+      return text;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('زمان انتظار سرور NVIDIA تمام شد.');
+      }
+      throw error;
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    if (!userApiKey) {
+    const selectedModelObj = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+    const isNvidiaModel = selectedModelObj?.provider === 'nvidia';
+
+    // Check Premium requirement for NVIDIA Models
+    if (isNvidiaModel && !user?.isPremium) {
+      setMessages(prev => [...prev, { role: 'model', content: '👑 **دسترسی به مدل‌های NVIDIA ویژه کاربران پرمیوم است!**\n\nبرای استفاده از این مدل‌ها و تمامی امکانات پیشرفته، لطفاً اکانت خود را به **پرمیوم** ارتقا دهید.' }]);
+      setShowSettings(true);
+      return;
+    }
+
+    // Check Gemini API key requirement for Gemini models
+    if (!isNvidiaModel && !userApiKey) {
       setMessages(prev => [...prev, { role: 'model', content: 'لطفاً ابتدا از بخش تنظیمات ⚙️ کلید API شخصی Gemini خود را وارد و ذخیره کنید.' }]);
       setShowSettings(true);
       return;
@@ -236,7 +336,13 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
     setIsLoading(true);
 
     try {
-      const reply = await callGeminiApi(userMessage, currentHistory);
+      let reply = '';
+      if (isNvidiaModel) {
+        reply = await callNvidiaApi(userMessage, currentHistory, selectedModel);
+      } else {
+        reply = await callGeminiApi(userMessage, currentHistory);
+      }
+
       setMessages(prev => [...prev, { role: 'model', content: reply }]);
 
       // Check if response contains JSON action for organize
@@ -327,20 +433,36 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
 
             {/* Model Selection */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1">
-                <Cpu className="w-3.5 h-3.5 text-[var(--color-primary)]" />
-                انتخاب مدل هوش مصنوعی (Gemini)
+              <label className="text-[12px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-[var(--color-primary)]" />
+                  انتخاب مدل هوش مصنوعی
+                </span>
+                {!user?.isPremium && (
+                  <span className="text-[10px] text-amber-500 font-bold flex items-center gap-0.5">
+                    <Crown className="w-3 h-3" /> ارتقا به پرمیوم
+                  </span>
+                )}
               </label>
               <select
                 value={selectedModel}
                 onChange={(e) => handleModelChange(e.target.value)}
                 className="w-full bg-white dark:bg-black/40 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-[12px] text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] font-medium cursor-pointer"
               >
-                {AVAILABLE_MODELS.map(m => (
-                  <option key={m.id} value={m.id} className="text-slate-800 bg-white dark:bg-slate-800 dark:text-white py-1">
-                    {m.name} - {m.desc}
-                  </option>
-                ))}
+                <optgroup label="مدل‌های رایگان (Gemini API)">
+                  {AVAILABLE_MODELS.filter(m => !m.isPremium).map(m => (
+                    <option key={m.id} value={m.id} className="text-slate-800 bg-white dark:bg-slate-800 dark:text-white py-1">
+                      {m.name} - {m.desc}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="مدل‌های پرمیوم انانویا (NVIDIA Engine 👑)">
+                  {AVAILABLE_MODELS.filter(m => m.isPremium).map(m => (
+                    <option key={m.id} value={m.id} className="text-slate-800 bg-white dark:bg-slate-800 dark:text-white py-1">
+                      {m.name} {!user?.isPremium ? '(پرمیوم 👑)' : '- ' + m.desc}
+                    </option>
+                  ))}
+                </optgroup>
               </select>
             </div>
 
