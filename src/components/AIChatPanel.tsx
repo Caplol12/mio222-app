@@ -140,8 +140,14 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
 
     const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید.
 
-دستور ویژه مرتب‌سازی:
-اگر کاربر درخواست مرتب‌سازی نشانک‌ها در صفحه ai list را کرد (یا کلمات کلیدی مرتب‌سازی، دسته‌بندی خودکار، ai list را بکار برد)، شما باید نشانک‌ها را تحلیل کنید و حتماً خروجی خود را دقیقاً با این فرمت JSON در انتهای پاسخ قرار دهید تا سیستم بتواند آن را اجرا کند:
+قوانین و مراحل مرتب‌سازی هوشمند نشانک‌ها:
+۱. اگر کاربر اولین بار گفت "نشانک‌ها را مرتب کن" یا روی دستور مرتب‌سازی کلیک کرد، اما هنوز **استایل و معیار دسته‌بندی** (مثل استاندارد، ریز‌موضوعات، خلاقانه، طنز، بر اساس کاربرد یا زبان) را مشخص نکرده است:
+   - نباید هنوز JSON تولید کنی!
+   - از کاربر بصورت صمیمی و شفاف بپرس که ترجیح می‌دهد نشانک‌ها با چه استایل و معیاری (مثلاً: استاندارد، ریز‌موضوعات تخصصی، خلاقانه/طنز، یا استایل دلخواه خودش) در پوشه‌ها دسته‌بندی شوند.
+
+۲. اگر کاربر استایل را مشخص کرد (یا در پیام خود استایل و نحوه مرتب‌سازی را ذکر نمود):
+   - تمام نشانک‌ها را تحلیل کن و دقیقا بر اساس همان استایل خواسته شده، دسته‌بندی‌ها (پوشه‌ها) را بساز.
+   - حتماً خروجی خود را دقیقاً با این فرمت JSON در انتهای پاسخ قرار بده تا سیستم بتواند آن را در صفحه ai list اجرا کند:
 
 \`\`\`json
 {
@@ -445,7 +451,7 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">دستورات پیشنهادی:</span>
             <button
               onClick={() => {
-                const promptText = "تمام نشانک‌های من را بر اساس موضوع و شباهت تحلیل کن و آن‌ها را در پوشه‌های مختلف در صفحه ai list دسته‌بندی کن.";
+                const promptText = "می‌خواهم نشانک‌هایم در صفحه ai list مرتب و دسته‌بندی شوند.";
                 setInput(promptText);
                 setTimeout(() => {
                   if (!userApiKey) {
@@ -459,20 +465,6 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
                   callGeminiApi(promptText, currentHistory)
                     .then(reply => {
                       setMessages(prev => [...prev, { role: 'model', content: reply }]);
-                      const jsonMatch = reply.match(/```json\s*([\s\S]*?)\s*```/);
-                      if (jsonMatch && jsonMatch[1]) {
-                        try {
-                          const parsed = JSON.parse(jsonMatch[1]);
-                          if (parsed.action === 'organize_ai_list' && parsed.categories && parsed.assignments) {
-                            onOrganizeBookmarks?.({
-                              categories: parsed.categories,
-                              assignments: parsed.assignments
-                            });
-                          }
-                        } catch (e) {
-                          console.error("Error parsing JSON action", e);
-                        }
-                      }
                     })
                     .catch(err => {
                       setMessages(prev => [...prev, { role: 'model', content: `خطا: ${err.message || 'خطای ناشناخته'}` }]);
@@ -485,8 +477,8 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
               }}
               className="text-right p-3 rounded-xl bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 text-[var(--color-primary)] text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer group shadow-sm"
             >
-              <span>✨ مرتب‌سازی هوشمند همه نشانک‌ها در صفحه ai list</span>
-              <span className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded-full group-hover:scale-105 transition-transform">اجرا</span>
+              <span>✨ شروع مرتب‌سازی هوشمند نشانک‌ها در صفحه ai list</span>
+              <span className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded-full group-hover:scale-105 transition-transform">شروع</span>
             </button>
           </div>
         )}
