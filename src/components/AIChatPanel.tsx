@@ -3,6 +3,7 @@ import { X, Send, Bot, User, Loader2, Settings, Key, Trash2, CheckCircle2, Cpu, 
 import { useGlassStyle } from '../contexts/SettingsContext';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../contexts/AuthContext';
+import { isAdmin } from '../utils/admin';
 
 import { Bookmark, CategoryItem } from '../types';
 
@@ -41,6 +42,22 @@ const NVIDIA_DEV_KEY = 'nvapi-ndKrDaQtB83GCml_as8Uyc_1loF8v_oLK1uCaZw57pYhCsWx36
 export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, onOrganizeBookmarks }: AIChatPanelProps) {
   const { getGlassStyle } = useGlassStyle();
   const { user } = useAuth();
+
+  // Check if current user has Premium privileges (isPremium flag, admin, or stored user)
+  const isUserPremium = Boolean(
+    user?.isPremium || 
+    (user?.email && isAdmin(user.email)) ||
+    (() => {
+      try {
+        const stored = localStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          return parsed.isPremium || (parsed.email && isAdmin(parsed.email));
+        }
+      } catch {}
+      return false;
+    })()
+  );
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const stored = localStorage.getItem('ai_chat_history');
@@ -314,7 +331,7 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
     const isNvidiaModel = selectedModelObj?.provider === 'nvidia';
 
     // Check Premium requirement for NVIDIA Models
-    if (isNvidiaModel && !user?.isPremium) {
+    if (isNvidiaModel && !isUserPremium) {
       setMessages(prev => [...prev, { role: 'model', content: '👑 **دسترسی به مدل‌های NVIDIA ویژه کاربران پرمیوم است!**\n\nبرای استفاده از این مدل‌ها و تمامی امکانات پیشرفته، لطفاً اکانت خود را به **پرمیوم** ارتقا دهید.' }]);
       setShowSettings(true);
       return;
@@ -438,7 +455,7 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
                   <Cpu className="w-3.5 h-3.5 text-[var(--color-primary)]" />
                   انتخاب مدل هوش مصنوعی
                 </span>
-                {!user?.isPremium && (
+                {!isUserPremium && (
                   <span className="text-[10px] text-amber-500 font-bold flex items-center gap-0.5">
                     <Crown className="w-3 h-3" /> ارتقا به پرمیوم
                   </span>
@@ -459,7 +476,7 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, on
                 <optgroup label="مدل‌های پرمیوم انانویا (NVIDIA Engine 👑)">
                   {AVAILABLE_MODELS.filter(m => m.isPremium).map(m => (
                     <option key={m.id} value={m.id} className="text-slate-800 bg-white dark:bg-slate-800 dark:text-white py-1">
-                      {m.name} {!user?.isPremium ? '(پرمیوم 👑)' : '- ' + m.desc}
+                      {m.name} {!isUserPremium ? '(پرمیوم 👑)' : '- ' + m.desc}
                     </option>
                   ))}
                 </optgroup>

@@ -178,9 +178,14 @@ export default function App() {
     setCategories(updatedCategories);
     localStorage.setItem('stash_categories', JSON.stringify(updatedCategories));
 
-    // 3. Assign Bookmarks to their corresponding AI Categories and AI Page
+    // 3. Create duplicates/copies for 'ai list' page so original bookmarks stay intact in their original pages
     setBookmarks(prevBookmarks => {
-      const updatedBookmarks = prevBookmarks.map(bm => {
+      // Remove any previously generated AI list copies to prevent duplication on multiple runs
+      const existingNonAiBookmarks = prevBookmarks.filter(bm => !bm.id.endsWith('-ai-copy'));
+      
+      const aiCopies: Bookmark[] = [];
+
+      existingNonAiBookmarks.forEach(bm => {
         // Find which Category AI assigned this bookmark to
         let targetCategoryName: string | undefined;
         for (const [catName, bmIds] of Object.entries(assignments)) {
@@ -192,16 +197,17 @@ export default function App() {
 
         if (targetCategoryName && categoryNameToId[targetCategoryName]) {
           const targetCatId = categoryNameToId[targetCategoryName];
-          return {
+          aiCopies.push({
             ...bm,
+            id: bm.id + '-ai-copy',
             category: targetCatId,
             categoryId: targetCatId,
             pageId: aiPageId
-          };
+          });
         }
-        return bm;
       });
 
+      const updatedBookmarks = [...existingNonAiBookmarks, ...aiCopies];
       localStorage.setItem('stash_bookmarks', JSON.stringify(updatedBookmarks));
       return updatedBookmarks;
     });
