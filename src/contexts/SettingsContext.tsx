@@ -96,25 +96,39 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       console.error(e);
     }
 
-    
     // Apply primary color as a CSS variable for dynamic use
     document.documentElement.style.setProperty('--color-primary', settings.primaryColor);
     
-    // Apply theme mode
-    if (settings.themeMode === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else if (settings.themeMode === 'light') {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    } else {
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    // Apply theme mode logic cleanly
+    const applyTheme = () => {
+      let isDark = false;
+      if (settings.themeMode === 'dark') {
+        isDark = true;
+      } else if (settings.themeMode === 'light') {
+        isDark = false;
+      } else {
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (isDark) {
         document.documentElement.classList.add('dark');
         document.documentElement.classList.remove('light');
+        document.documentElement.style.colorScheme = 'dark';
       } else {
         document.documentElement.classList.add('light');
         document.documentElement.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
       }
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes in auto mode
+    if (settings.themeMode === 'auto' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleSystemThemeChange = () => applyTheme();
+      mediaQuery.addEventListener('change', handleSystemThemeChange);
+      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
     }
   }, [settings, isLoaded]);
 
@@ -149,9 +163,25 @@ export function useGlassStyle() {
   const { settings } = useSettings();
     
   const getGlassStyle = () => {
-    let bgColor = '';
-    let baseColor = settings.boardColor || '#000000';
+    let isDark = true;
+    if (settings.themeMode === 'dark') {
+      isDark = true;
+    } else if (settings.themeMode === 'light') {
+      isDark = false;
+    } else if (typeof window !== 'undefined' && window.matchMedia) {
+      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    let baseColor = settings.boardColor;
     
+    // Auto-adapt default board color for light mode if using dark default
+    if (!isDark && (!baseColor || baseColor === '#0F172A' || baseColor === '#000000')) {
+      baseColor = '#FFFFFF';
+    } else if (isDark && (!baseColor || baseColor === '#FFFFFF')) {
+      baseColor = '#0F172A';
+    }
+    
+    let bgColor = '';
     if (baseColor.startsWith('#')) {
       const hex = baseColor.replace('#', '');
       const r = parseInt(hex.length === 3 ? hex.charAt(0) + hex.charAt(0) : hex.substring(0, 2), 16) || 0;

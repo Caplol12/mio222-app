@@ -69,19 +69,19 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
   };
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase mb-4">{children}</h3>
+    <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider uppercase mb-4">{children}</h3>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" dir="ltr">
-      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="relative w-full max-w-[450px] max-h-[90vh] bg-[#E5E9EC] dark:bg-[#E5E9EC] rounded-[24px] shadow-2xl overflow-y-auto font-sans text-slate-800">
+      <div className="relative w-full max-w-[450px] max-h-[90vh] bg-[#F8FAFC] dark:bg-[#121316] rounded-[24px] shadow-2xl overflow-y-auto font-sans text-slate-800 dark:text-slate-100 border border-slate-300/80 dark:border-white/10 transition-colors">
         
         {/* Header */}
-        <div className="sticky top-0 bg-[#E5E9EC]/95 backdrop-blur z-10 px-6 py-5 border-b border-slate-300 flex items-center justify-between">
-          <h2 className="text-lg font-bold tracking-tight text-slate-700">Settings / تنظیمات</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+        <div className="sticky top-0 bg-[#F8FAFC]/95 dark:bg-[#121316]/95 backdrop-blur z-10 px-6 py-5 border-b border-slate-300/80 dark:border-white/10 flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight text-slate-800 dark:text-white">Settings / تنظیمات</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -92,7 +92,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
           {user && (
             <section className="space-y-4" dir="rtl">
               <SectionTitle>حساب کاربری و ثبت نام</SectionTitle>
-              <div className="bg-slate-200/70 rounded-2xl p-4 flex flex-col gap-4">
+              <div className="bg-slate-200/60 dark:bg-white/5 rounded-2xl p-4 flex flex-col gap-4 border border-slate-300/60 dark:border-white/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden shadow-sm shrink-0">
@@ -100,7 +100,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-800">{user.name}</span>
+                        <span className="font-bold text-sm text-slate-800 dark:text-white">{user.name}</span>
                         {user.numericId && (
                           <span className="bg-blue-600/10 text-blue-700 font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-blue-600/20">
                             #{user.numericId}
@@ -320,18 +320,36 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
           {/* Appearance Section */}
           <section className="space-y-4">
-            <SectionTitle>Appearance</SectionTitle>
+            <SectionTitle>Appearance / حالت ظاهر</SectionTitle>
             
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-slate-600">Theme Mode</span>
-              <div className="flex bg-slate-200 rounded-xl p-1">
-                {['light', 'dark', 'auto'].map(m => (
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Theme Mode / تم برنامه</span>
+              <div className="flex bg-slate-200/80 dark:bg-black/40 rounded-xl p-1 border border-slate-300/60 dark:border-white/10">
+                {[
+                  { id: 'light', name: 'Light', icon: '☀️' },
+                  { id: 'dark', name: 'Dark', icon: '🌙' },
+                  { id: 'auto', name: 'Auto', icon: '💻' }
+                ].map(m => (
                   <button 
-                    key={m} 
-                    onClick={() => updateSettings({ themeMode: m as any })} 
-                    className={`px-3 py-1.5 text-xs font-medium rounded-[10px] transition-all capitalize ${settings.themeMode === m ? 'bg-[var(--color-primary)] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    key={m.id} 
+                    onClick={() => {
+                      const newTheme = m.id as 'light' | 'dark' | 'auto';
+                      let newBoardColor = settings.boardColor;
+                      if (newTheme === 'light' && (newBoardColor === '#0F172A' || newBoardColor === '#000000')) {
+                        newBoardColor = '#FFFFFF';
+                      } else if (newTheme === 'dark' && (newBoardColor === '#FFFFFF' || !newBoardColor)) {
+                        newBoardColor = '#0F172A';
+                      }
+                      updateSettings({ themeMode: newTheme, boardColor: newBoardColor });
+                    }} 
+                    className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-all flex items-center gap-1 cursor-pointer ${
+                      settings.themeMode === m.id 
+                        ? 'bg-[var(--color-primary)] text-white shadow-sm' 
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
                   >
-                    {m}
+                    <span>{m.icon}</span>
+                    <span>{m.name}</span>
                   </button>
                 ))}
               </div>
