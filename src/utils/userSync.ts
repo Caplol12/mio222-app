@@ -26,15 +26,16 @@ const fromProfileRow = (row: any): UserRecord => ({
   createdAt: row.created_at,
 });
 
-const toProfileRow = (user: Partial<UserRecord>) => ({
-  ...(user.id ? { id: user.id } : {}),
-  ...(user.name !== undefined ? { name: user.name } : {}),
-  ...(user.email !== undefined ? { email: user.email } : {}),
-  ...(user.picture !== undefined ? { picture: user.picture } : {}),
-  ...(user.provider !== undefined ? { provider: user.provider } : {}),
-  ...(user.isPremium !== undefined ? { is_premium: user.isPremium } : {}),
-  ...(user.status !== undefined ? { status: user.status } : {}),
-});
+const toProfileRow = (user: Partial<UserRecord>) => {
+  const row: any = {};
+  if (user.id) row.id = user.id;
+  if (user.name !== undefined) row.name = user.name;
+  if (user.email !== undefined) row.email = user.email;
+  if (user.picture !== undefined) row.picture = user.picture;
+  if (user.provider !== undefined) row.provider = user.provider;
+  if (user.status !== undefined) row.status = user.status;
+  return row;
+};
 
 const GUEST_KEY = 'guest_user_local';
 const isGuest = (user: Partial<UserRecord>) => !user.provider || user.provider === 'guest';

@@ -64,7 +64,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setToken(storedToken);
         setUser(parsedUser);
-        syncUserWithServer(parsedUser, storedToken);
+
+        // Fetch authoritative user profile from Supabase first so direct DB edits are respected
+        fetchUserStatus(parsedUser.id, storedToken).then((remoteUser) => {
+          if (remoteUser) {
+            const mergedUser = { ...parsedUser, ...remoteUser };
+            setUser(mergedUser);
+            localStorage.setItem('user', JSON.stringify(mergedUser));
+          } else {
+            syncUserWithServer(parsedUser, storedToken);
+          }
+        }).catch(() => {
+          syncUserWithServer(parsedUser, storedToken);
+        });
       } catch {}
     } else {
       // Automatic first visit guest registration
