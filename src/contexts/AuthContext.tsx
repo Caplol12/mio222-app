@@ -41,13 +41,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const refreshUserStatus = useCallback(async (): Promise<User | null> => {
-    if (!user || !token) return null;
+    if (!user) return null;
     try {
-      const match = await fetchUserStatus(user.id, token);
+      const match = await fetchUserStatus(user.id, token || undefined, user.email);
       if (match) {
-        const updated = { ...user, ...match };
+        const updated = { ...user, ...match, isPremium: match.isPremium ?? user.isPremium };
         setUser(updated);
         localStorage.setItem('user', JSON.stringify(updated));
+        if (updated.isPremium) {
+          localStorage.setItem('is_premium', 'true');
+          localStorage.setItem('user_is_premium', 'true');
+        } else {
+          localStorage.setItem('is_premium', 'false');
+          localStorage.setItem('user_is_premium', 'false');
+        }
         return updated;
       }
     } catch (err) {
@@ -66,11 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(parsedUser);
 
         // Fetch authoritative user profile from Supabase first so direct DB edits are respected
-        fetchUserStatus(parsedUser.id, storedToken).then((remoteUser) => {
+        fetchUserStatus(parsedUser.id, storedToken, parsedUser.email).then((remoteUser) => {
           if (remoteUser) {
-            const mergedUser = { ...parsedUser, ...remoteUser };
+            const mergedUser = { ...parsedUser, ...remoteUser, isPremium: remoteUser.isPremium ?? parsedUser.isPremium };
             setUser(mergedUser);
             localStorage.setItem('user', JSON.stringify(mergedUser));
+            if (mergedUser.isPremium) {
+              localStorage.setItem('is_premium', 'true');
+              localStorage.setItem('user_is_premium', 'true');
+            }
           } else {
             syncUserWithServer(parsedUser, storedToken);
           }
@@ -99,13 +110,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (newToken: string, newUser: User): Promise<User> => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
-    const synced = await syncUserWithServer(newUser, newToken);
+
+    // Try fetching remote status immediately to preserve isPremium if set in DB
+    let initialUser = newUser;
+    try {
+      const remote = await fetchUserStatus(newUser.id, newToken, newUser.email);
+      if (remote) {
+        initialUser = { ...newUser, ...remote, isPremium: remote.isPremium ?? newUser.isPremium };
+      }
+    } catch {}
+
+    const synced = await syncUserWithServer(initialUser, newToken);
+    if (synced.isPremium) {
+      localStorage.setItem('is_premium', 'true');
+      localStorage.setItem('user_is_premium', 'true');
+    }
     return synced;
   };
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('is_premium');
+    localStorage.removeItem('user_is_premium');
     setToken(null);
     setUser(null);
   };

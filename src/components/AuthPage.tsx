@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGlassStyle } from '../contexts/SettingsContext';
 import { isSupabaseConfigured, supabaseRequest } from '../utils/supabaseClient';
+import { fetchUserStatus } from '../utils/userSync';
 
 // Helper function to safely read supabase config directly inside component for debugging
 const getSupabaseConfig = () => {
@@ -86,6 +87,15 @@ export default function AuthPage() {
           throw new Error('شناسه کاربر معتبر (UUID) از Supabase دریافت نشد.');
         }
 
+        // Check if remote user profile has isPremium = true in Supabase
+        let isPremiumRemote = false;
+        try {
+          const remoteStatus = await fetchUserStatus(userId, token, cleanEmail);
+          if (remoteStatus?.isPremium) {
+            isPremiumRemote = true;
+          }
+        } catch {}
+
         // Build User Object
         const user = {
           id: userId,
@@ -93,7 +103,7 @@ export default function AuthPage() {
           email: cleanEmail,
           picture: authRes.user?.user_metadata?.picture || '',
           provider: 'email',
-          isPremium: false
+          isPremium: isPremiumRemote
         };
 
         await login(token, user);

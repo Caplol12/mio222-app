@@ -41,23 +41,46 @@ const NVIDIA_DEV_KEY = 'nvapi-ndKrDaQtB83GCml_as8Uyc_1loF8v_oLK1uCaZw57pYhCsWx36
 
 export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, onOrganizeBookmarks }: AIChatPanelProps) {
   const { getGlassStyle } = useGlassStyle();
-  const { user } = useAuth();
+  const { user, refreshUserStatus } = useAuth();
 
-  // Check if current user has Premium privileges (isPremium flag, admin, or stored user)
-  const isUserPremium = Boolean(
-    user?.isPremium || 
-    (user?.email && isAdmin(user.email)) ||
-    (() => {
+  // Trigger refresh when panel opens to ensure latest database premium state is synced
+  useEffect(() => {
+    if (isOpen) {
+      refreshUserStatus?.();
+    }
+  }, [isOpen, refreshUserStatus]);
+
+  // Dynamically evaluate Premium status on every render/state update
+  const isUserPremium = React.useMemo(() => {
+    // 1. Check local backup overrides first for instant responsiveness
+    if (localStorage.getItem('is_premium') === 'true' || localStorage.getItem('user_is_premium') === 'true') {
+      return true;
+    }
+
+    if (!user) {
       try {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          return parsed.isPremium || (parsed.email && isAdmin(parsed.email));
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser);
+          if (parsed.isPremium || (parsed.email && isAdmin(parsed.email))) return true;
         }
       } catch {}
       return false;
-    })()
-  );
+    }
+
+    if (user.isPremium) return true;
+    if (user.email && isAdmin(user.email)) return true;
+    
+    // Check fallback stored user object
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.isPremium || (parsed.email && isAdmin(parsed.email))) return true;
+      }
+    } catch {}
+    return false;
+  }, [user]);
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const stored = localStorage.getItem('ai_chat_history');

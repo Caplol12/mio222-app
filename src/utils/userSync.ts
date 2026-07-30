@@ -64,15 +64,39 @@ export const syncUserToSharedDatabase = async (
   }
 };
 
-export const fetchUserStatus = async (id: string, authToken?: string): Promise<UserRecord | null> => {
-  if (!isSupabaseConfigured()) return null;
+export const fetchUserStatusByEmail = async (email: string, authToken?: string): Promise<UserRecord | null> => {
+  if (!isSupabaseConfigured() || !email) return null;
   try {
     const rows = await supabaseRequest<any[]>(
-      `/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&select=*`,
+      `/rest/v1/profiles?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=*`,
       { authToken }
     );
     return rows && rows[0] ? fromProfileRow(rows[0]) : null;
   } catch {
+    return null;
+  }
+};
+
+export const fetchUserStatus = async (idOrEmail: string, authToken?: string, secondaryEmail?: string): Promise<UserRecord | null> => {
+  if (!isSupabaseConfigured() || !idOrEmail) return null;
+  try {
+    let rows = await supabaseRequest<any[]>(
+      `/rest/v1/profiles?id=eq.${encodeURIComponent(idOrEmail)}&select=*`,
+      { authToken }
+    );
+    if ((!rows || rows.length === 0) && (secondaryEmail || idOrEmail.includes('@'))) {
+      const emailToSearch = secondaryEmail || idOrEmail;
+      rows = await supabaseRequest<any[]>(
+        `/rest/v1/profiles?email=eq.${encodeURIComponent(emailToSearch.toLowerCase().trim())}&select=*`,
+        { authToken }
+      );
+    }
+    return rows && rows[0] ? fromProfileRow(rows[0]) : null;
+  } catch {
+    if (secondaryEmail || idOrEmail.includes('@')) {
+      const emailToSearch = secondaryEmail || idOrEmail;
+      return fetchUserStatusByEmail(emailToSearch, authToken);
+    }
     return null;
   }
 };
@@ -103,6 +127,20 @@ export const updateSharedUserPremiumStatus = async (
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({ is_premium: makePremium }),
     });
+
+    // Update local storage backup key if modifying active user
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.id === id || (parsed.numericId && String(parsed.numericId) === id)) {
+          parsed.isPremium = makePremium;
+          localStorage.setItem('user', JSON.stringify(parsed));
+          localStorage.setItem('is_premium', makePremium ? 'true' : 'false');
+          localStorage.setItem('user_is_premium', makePremium ? 'true' : 'false');
+        }
+      }
+    } catch {}
   } catch (e) {
     console.warn('updateSharedUserPremiumStatus: Supabase update failed', e);
   }
