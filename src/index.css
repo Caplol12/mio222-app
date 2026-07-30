@@ -62,3 +62,47 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.15);
 }
+
+/* Custom Range Slider Thumb matching reference */
+input[type="range"].custom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+}
+
+input[type="range"].custom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  margin-top: -6px;
+  border: none;
+}
+
+input[type="range"].custom-slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  border: none;
+}
+
+input[type="range"].custom-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+input[type="range"].custom-slider::-moz-range-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  border-radius: 10px;
+}
