@@ -69,18 +69,18 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
   };
 
   const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-    <h3 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">{children}</h3>
+    <h3 className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">{children}</h3>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" dir="ltr">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="relative w-full max-w-[450px] max-h-[90vh] bg-[#EEF0F5] dark:bg-[#141518] rounded-[24px] shadow-2xl overflow-y-auto font-sans text-slate-800 dark:text-slate-100 border border-slate-300/60 dark:border-white/10 transition-colors">
+      <div className="relative w-full max-w-[450px] max-h-[90vh] bg-[#F2F2F6] dark:bg-[#141518] rounded-[24px] shadow-2xl overflow-y-auto font-sans text-slate-800 dark:text-slate-100 border border-slate-300/50 dark:border-white/10 transition-colors">
         
         {/* Header */}
-        <div className="sticky top-0 bg-[#EEF0F5]/95 dark:bg-[#141518]/95 backdrop-blur z-10 px-6 py-5 border-b border-slate-300/50 dark:border-white/10 flex items-center justify-between">
-          <h2 className="text-base font-bold tracking-tight text-slate-800 dark:text-white">Settings</h2>
+        <div className="sticky top-0 bg-[#F2F2F6]/95 dark:bg-[#141518]/95 backdrop-blur z-10 px-6 py-5 border-b border-slate-300/40 dark:border-white/10 flex items-center justify-between">
+          <h2 className="text-base font-semibold tracking-tight text-slate-800 dark:text-white">Settings</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -100,21 +100,21 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                     </div>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-800 dark:text-white">{user.name}</span>
+                        <span className="font-semibold text-sm text-slate-800 dark:text-white">{user.name}</span>
                         {user.numericId && (
-                          <span className="bg-blue-600/10 text-blue-700 font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-blue-600/20">
+                          <span className="bg-blue-600/10 text-blue-700 font-mono text-[11px] font-medium px-2 py-0.5 rounded-md border border-blue-600/20">
                             #{user.numericId}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-slate-500" dir="ltr">{user.email}</span>
+                      <span className="text-xs text-slate-500 font-normal" dir="ltr">{user.email}</span>
                       <div className="flex items-center gap-2 mt-1">
                         {user.isPremium ? (
-                          <span className="text-[10px] bg-amber-500/20 text-amber-700 border border-amber-500/30 px-2 py-0.5 rounded-md font-bold flex items-center gap-1">
+                          <span className="text-[10px] bg-amber-500/20 text-amber-700 border border-amber-500/30 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
                             <Crown className="w-3 h-3 text-amber-600" /> کاربر پرمیوم (VIP)
                           </span>
                         ) : (
-                          <span className="text-[10px] bg-slate-300 text-slate-600 px-2 py-0.5 rounded-md font-medium">
+                          <span className="text-[10px] bg-slate-300 text-slate-600 px-2 py-0.5 rounded-md font-normal">
                             {user.provider === 'guest' || user.email.includes('@local.app') ? 'اکانت مهمان' : 'کاربر ثبت‌شده'}
                           </span>
                         )}
@@ -131,7 +131,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                 </div>
 
                 {regSuccess && (
-                  <div className="text-xs text-emerald-800 bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl font-medium flex items-center gap-1.5">
+                  <div className="text-xs text-emerald-800 bg-emerald-100 border border-emerald-300 p-2.5 rounded-xl font-normal flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     {regSuccess}
                   </div>
@@ -141,12 +141,12 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                 {(user.provider === 'guest' || user.email.includes('@local.app')) && (
                   <div className="pt-3 border-t border-slate-300/80 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                         <UserPlus className="w-4 h-4 text-blue-600" /> ثبت نام و حفظ اطلاعات در سرور
                       </span>
                       <button 
                         onClick={() => setShowRegisterForm(!showRegisterForm)}
-                        className="text-xs text-blue-600 hover:underline font-bold"
+                        className="text-xs text-blue-600 hover:underline font-semibold"
                       >
                         {showRegisterForm ? 'بستن فرم' : 'تکمیل ثبت نام'}
                       </button>
@@ -155,11 +155,11 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                     {showRegisterForm && (
                       <form onSubmit={handleRegisterInSettings} className="flex flex-col gap-3 mt-1 bg-white/70 p-4 rounded-xl border border-slate-300 shadow-sm">
                         {regError && (
-                          <div className="text-xs text-red-600 bg-red-100 border border-red-300 p-2 rounded-lg font-medium">{regError}</div>
+                          <div className="text-xs text-red-600 bg-red-100 border border-red-300 p-2 rounded-lg font-normal">{regError}</div>
                         )}
                         
                         <div className="flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">نام و نام خانوادگی</label>
+                          <label className="text-[11px] font-semibold text-slate-600">نام و نام خانوادگی</label>
                           <input 
                             type="text" 
                             required
@@ -171,7 +171,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">ایمیل</label>
+                          <label className="text-[11px] font-semibold text-slate-600">ایمیل</label>
                           <input 
                             type="email" 
                             required
@@ -184,7 +184,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[11px] font-bold text-slate-600">رمز عبور</label>
+                          <label className="text-[11px] font-semibold text-slate-600">رمز عبور</label>
                           <input 
                             type="password" 
                             required
@@ -199,7 +199,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                         <button 
                           type="submit"
                           disabled={isRegLoading}
-                          className="mt-1 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center justify-center gap-2"
+                          className="mt-1 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all shadow flex items-center justify-center gap-2"
                         >
                           {isRegLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                           ثبت نام و ذخیره در سرور (آیدی #{user.numericId})
@@ -217,7 +217,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <SectionTitle>ACCESS</SectionTitle>
             <div className="bg-white/60 dark:bg-white/5 rounded-2xl p-4 flex flex-col gap-3 border border-slate-300/50 dark:border-white/10">
               <div className="flex items-center justify-between">
-                <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                <span className={`text-[11px] font-medium px-3 py-1 rounded-full border ${
                   user?.isPremium 
                     ? 'bg-amber-500/15 text-amber-700 border-amber-500/30' 
                     : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
@@ -226,7 +226,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                 </span>
               </div>
 
-              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              <p className="text-xs text-slate-600 leading-relaxed font-normal">
                 دسترسی نامحدود به تمامی مدل‌های پیشرفته هوش مصنوعی (NVIDIA, DeepSeek, GLM) و کلیه امکانات پرمیوم.
               </p>
 
@@ -237,7 +237,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                     setShowPurchaseOptions(true);
                     setSelectedPaymentMethod(null);
                   }}
-                  className="w-full py-3.5 px-4 bg-[#1E1F24] hover:bg-[#2A2B32] text-white font-bold text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                  className="w-full py-3.5 px-4 bg-[#1E1F24] hover:bg-[#2A2B32] text-white font-medium text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
                   <span>Lifetime · ۹۸ هزار تومان</span>
@@ -245,7 +245,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
               ) : (
                 <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center justify-between pb-1 border-b border-slate-300">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                       انتخاب روش پرداخت (Lifetime · ۹۸ هزار تومان)
                     </span>
@@ -254,7 +254,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                         setShowPurchaseOptions(false);
                         setSelectedPaymentMethod(null);
                       }}
-                      className="text-[11px] text-slate-500 hover:text-slate-700 font-bold"
+                      className="text-[11px] text-slate-500 hover:text-slate-700 font-medium"
                     >
                       انصراف
                     </button>
@@ -271,7 +271,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                       className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 text-slate-800 transition-all gap-1.5 shadow-sm group cursor-pointer"
                     >
                       <CreditCard className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-bold">درگاه پرداخت</span>
+                      <span className="text-xs font-semibold">درگاه پرداخت</span>
                       <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
                         انتقال مستقیم <ExternalLink className="w-2.5 h-2.5" />
                       </span>
@@ -287,7 +287,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                       }`}
                     >
                       <Send className={`w-5 h-5 ${selectedPaymentMethod === 'direct' ? 'text-white' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
-                      <span className="text-xs font-bold">پرداخت مستقیم</span>
+                      <span className="text-xs font-semibold">پرداخت مستقیم</span>
                       <span className={`text-[10px] ${selectedPaymentMethod === 'direct' ? 'text-blue-100' : 'text-slate-500'}`}>
                         ارسال پیام تلگرام
                       </span>
@@ -297,15 +297,15 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                   {/* Message for Direct Payment */}
                   {selectedPaymentMethod === 'direct' && (
                     <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1">
-                      <p className="text-xs text-slate-800 leading-relaxed font-medium text-right">
-                        برای پرداخت هزینه پرمیوم به این ایدی در تلگرام پیام بدید (<a href="https://t.me/metarwa" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline font-mono" dir="ltr">@metarwa</a>) تا اطلاعات کامل براتون ارسال شود
+                      <p className="text-xs text-slate-800 leading-relaxed font-normal text-right">
+                        برای پرداخت هزینه پرمیوم به این ایدی در تلگرام پیام بدید (<a href="https://t.me/metarwa" target="_blank" rel="noopener noreferrer" className="font-semibold text-blue-600 hover:underline font-mono" dir="ltr">@metarwa</a>) تا اطلاعات کامل براتون ارسال شود
                       </p>
                       <div className="flex justify-end pt-1 border-t border-blue-200/60">
                         <a 
                           href="https://t.me/metarwa" 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
                         >
                           <Send className="w-3.5 h-3.5" />
                           ارسال پیام در تلگرام (@metarwa)
@@ -323,12 +323,12 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <SectionTitle>APPEARANCE</SectionTitle>
             
             <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Theme Mode</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Theme Mode</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1 border border-slate-300/50 dark:border-white/10">
                 {[
-                  { id: 'light', name: 'Light', icon: '☀️' },
-                  { id: 'dark', name: 'Dark', icon: '🌙' },
-                  { id: 'auto', name: 'Auto', icon: '💻' }
+                  { id: 'light', name: 'Light' },
+                  { id: 'dark', name: 'Dark' },
+                  { id: 'auto', name: 'Auto' }
                 ].map(m => (
                   <button 
                     key={m.id} 
@@ -342,13 +342,12 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                       }
                       updateSettings({ themeMode: newTheme, boardColor: newBoardColor });
                     }} 
-                    className={`px-3.5 py-1.5 text-xs font-bold rounded-[10px] transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-[10px] transition-all flex items-center justify-center cursor-pointer ${
                       settings.themeMode === m.id 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    <span>{m.icon}</span>
                     <span>{m.name}</span>
                   </button>
                 ))}
@@ -357,7 +356,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Primary color</span>
+                <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Primary color</span>
                 <input 
                   type="color" 
                   value={settings.primaryColor || '#796552'} 
@@ -366,7 +365,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Board color</span>
+                <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Board color</span>
                 <input 
                   type="color" 
                   value={
@@ -384,7 +383,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <div className="space-y-4 pt-2">
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Opacity</span>
+                  <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Opacity</span>
                   <span className="text-xs text-slate-400 font-normal font-mono">{settings.opacity}%</span>
                 </div>
                 <input 
@@ -402,7 +401,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
               <div className="flex flex-col gap-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Blur</span>
+                  <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Blur</span>
                   <span className="text-xs text-slate-400 font-normal font-mono">{settings.blur}px</span>
                 </div>
                 <input 
@@ -436,13 +435,13 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <SectionTitle>BOARD TEXT</SectionTitle>
             
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Size</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Size</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1">
                 {['S', 'M', 'L'].map(s => (
                   <button 
                     key={s} 
                     onClick={() => updateSettings({ textSize: s as any })} 
-                    className={`px-4 py-1.5 text-xs font-bold rounded-[10px] transition-all cursor-pointer ${
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-[10px] transition-all cursor-pointer ${
                       settings.textSize === s 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -455,13 +454,13 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Weight</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Weight</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1">
                 {['Normal', 'Bold'].map(w => (
                   <button 
                     key={w} 
                     onClick={() => updateSettings({ textWeight: w as any })} 
-                    className={`px-4 py-1.5 text-xs font-bold rounded-[10px] transition-all cursor-pointer ${
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-[10px] transition-all cursor-pointer ${
                       settings.textWeight === w 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -480,13 +479,13 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
           <section className="space-y-4">
             <SectionTitle>BOARDS</SectionTitle>
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Number of columns</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Number of columns</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1 overflow-x-auto max-w-[200px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {['4', '5', '6', '7', '8', '9'].map(c => (
                   <button 
                     key={c} 
                     onClick={() => updateSettings({ columns: c })} 
-                    className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-all shrink-0 cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-[10px] transition-all shrink-0 cursor-pointer ${
                       settings.columns === c 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -506,20 +505,20 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <SectionTitle>GENERAL</SectionTitle>
             
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Open links in new tab</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Open links in new tab</span>
               <div onClick={() => updateSettings({ openNewTab: !settings.openNewTab })} className={`w-11 h-6 rounded-full cursor-pointer p-1 transition-colors ${settings.openNewTab ? 'bg-[var(--color-primary)]' : 'bg-slate-300 dark:bg-slate-700'}`}>
                 <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${settings.openNewTab ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Hide extra bookmarks</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Hide extra bookmarks</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1">
                 {['Show 5', 'Show 10', 'Show 15', 'Show 20', 'Show All'].map(h => (
                   <button 
                     key={h} 
                     onClick={() => updateSettings({ hideExtra: h })} 
-                    className={`px-2 py-1.5 text-xs font-bold rounded-[10px] transition-all cursor-pointer ${
+                    className={`px-2 py-1.5 text-xs font-semibold rounded-[10px] transition-all cursor-pointer ${
                       settings.hideExtra === h 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -532,7 +531,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Show descriptions</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Show descriptions</span>
               <div onClick={() => updateSettings({ showDesc: !settings.showDesc })} className={`w-11 h-6 rounded-full cursor-pointer p-1 transition-colors ${settings.showDesc ? 'bg-[var(--color-primary)]' : 'bg-slate-300 dark:bg-slate-700'}`}>
                 <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${settings.showDesc ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
@@ -546,13 +545,13 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             <SectionTitle>OTHER</SectionTitle>
             
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Language</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Language</span>
               <div className="flex bg-[#E1E4EB] dark:bg-black/40 rounded-xl p-1">
                 {['Auto', 'فارسی', 'English'].map(l => (
                   <button 
                     key={l} 
                     onClick={() => updateSettings({ language: l })} 
-                    className={`px-3 py-1.5 text-xs font-bold rounded-[10px] transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-[10px] transition-all cursor-pointer ${
                       settings.language === l 
                         ? 'bg-[var(--color-primary)] text-white shadow-sm' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -565,15 +564,15 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Region</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Region</span>
               <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-slate-500">Auto-detect</span>
+                <span className="text-sm font-normal text-slate-500">Auto-detect</span>
                 <button className="text-sm text-[var(--color-primary)] hover:underline font-medium cursor-pointer">Advanced &rsaquo;</button>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Always show all buttons (Sidebar)</span>
+              <span className="text-sm font-normal text-slate-700 dark:text-slate-300">Always show all buttons (Sidebar)</span>
               <div onClick={() => updateSettings({ showAllSidebar: !settings.showAllSidebar })} className={`w-11 h-6 rounded-full cursor-pointer p-1 transition-colors ${settings.showAllSidebar ? 'bg-[var(--color-primary)]' : 'bg-slate-300 dark:bg-slate-700'}`}>
                 <div className={`w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${settings.showAllSidebar ? 'translate-x-5' : 'translate-x-0'}`}></div>
               </div>
@@ -582,7 +581,7 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
 
           {/* Support */}
           <section className="pt-4 flex items-center justify-between pb-8">
-            <span className="text-xs font-medium text-slate-400">Version 1.3.1</span>
+            <span className="text-xs font-normal text-slate-400">Version 1.3.1</span>
             <button className="text-sm text-[var(--color-primary)] hover:underline font-medium cursor-pointer">Support</button>
           </section>
 

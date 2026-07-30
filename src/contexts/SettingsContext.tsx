@@ -51,6 +51,19 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
+export const isColorDark = (color?: string): boolean => {
+  if (!color || color === 'transparent' || color === 'dark') return true;
+  if (color === 'light') return false;
+  let hex = color.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  if (hex.length !== 6) return true;
+  const r = parseInt(hex.substring(0, 2), 16) || 0;
+  const g = parseInt(hex.substring(2, 4), 16) || 0;
+  const b = parseInt(hex.substring(4, 6), 16) || 0;
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq < 128;
+};
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(() => {
     const saved = localStorage.getItem('app_settings_v1');
@@ -107,7 +120,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       } else if (settings.themeMode === 'light') {
         isDark = false;
       } else {
-        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        // Auto mode: determined dynamically based on Board color
+        isDark = isColorDark(settings.boardColor);
       }
 
       if (isDark) {
@@ -122,14 +136,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     };
 
     applyTheme();
-
-    // Listen for system theme changes in auto mode
-    if (settings.themeMode === 'auto' && window.matchMedia) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleSystemThemeChange = () => applyTheme();
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-      return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
-    }
   }, [settings, isLoaded]);
 
   const updateSettings = (newSettings: Partial<AppSettings>) => {
@@ -168,8 +174,8 @@ export function useGlassStyle() {
       isDark = true;
     } else if (settings.themeMode === 'light') {
       isDark = false;
-    } else if (typeof window !== 'undefined' && window.matchMedia) {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } else {
+      isDark = isColorDark(settings.boardColor);
     }
 
     let baseColor = settings.boardColor;
