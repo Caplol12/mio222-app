@@ -10,6 +10,7 @@ interface AIChatPanelProps {
   onClose: () => void;
   bookmarks: Bookmark[];
   categories: CategoryItem[];
+  onOrganizeBookmarks?: (organizedData: { categories: string[]; assignments: Record<string, string[]> }) => void;
 }
 
 interface Message {
@@ -25,7 +26,7 @@ export const AVAILABLE_MODELS = [
   { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'سبک و اقتصادی' },
 ];
 
-export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: AIChatPanelProps) {
+export default function AIChatPanel({ isOpen, onClose, bookmarks, categories, onOrganizeBookmarks }: AIChatPanelProps) {
   const { getGlassStyle } = useGlassStyle();
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
@@ -137,9 +138,25 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
       throw new Error('لطفاً ابتدا کلید API شخصی Gemini خود را از بخش تنظیمات ⚙️ وارد کنید.');
     }
 
-    const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید. در صورتی که کاربر سوالی درباره نشانک‌ها پرسید بر اساس این داده‌ها به او پاسخ دهید:
-دسته بندی ها: ${JSON.stringify(categories)}
-نشانک ها: ${JSON.stringify(bookmarks)}`;
+    const systemPrompt = `شما دستیار هوشمند مدیر نشانک‌ها (Bookmarks Manager) هستید. شما به پایگاه داده نشانک‌ها و دسته‌بندی‌های کاربر دسترسی دارید.
+
+دستور ویژه مرتب‌سازی:
+اگر کاربر درخواست مرتب‌سازی نشانک‌ها در صفحه ai list را کرد (یا کلمات کلیدی مرتب‌سازی، دسته‌بندی خودکار، ai list را بکار برد)، شما باید نشانک‌ها را تحلیل کنید و حتماً خروجی خود را دقیقاً با این فرمت JSON در انتهای پاسخ قرار دهید تا سیستم بتواند آن را اجرا کند:
+
+\`\`\`json
+{
+  "action": "organize_ai_list",
+  "categories": ["نام پوشه ۱", "نام پوشه ۲", ...],
+  "assignments": {
+    "نام پوشه ۱": ["id_bookmark_1", "id_bookmark_2"],
+    "نام پوشه ۲": ["id_bookmark_3"]
+  }
+}
+\`\`\`
+
+اطلاعات فعلی:
+دسته بندی ها: ${JSON.stringify(categories.map(c => ({ id: c.id, name: c.name })))}
+نشانک ها: ${JSON.stringify(bookmarks.map(b => ({ id: b.id, title: b.title, domain: b.domain, description: b.description, tags: b.tags })))}`;
 
     const contents = [...history, { role: 'user', content: userMessage }].map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
@@ -215,6 +232,22 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
     try {
       const reply = await callGeminiApi(userMessage, currentHistory);
       setMessages(prev => [...prev, { role: 'model', content: reply }]);
+
+      // Check if response contains JSON action for organize
+      const jsonMatch = reply.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (parsed.action === 'organize_ai_list' && parsed.categories && parsed.assignments) {
+            onOrganizeBookmarks?.({
+              categories: parsed.categories,
+              assignments: parsed.assignments
+            });
+          }
+        } catch (e) {
+          console.error("Error parsing JSON action from AI response", e);
+        }
+      }
     } catch (error: any) {
       console.error('Error generating response:', error);
       const errorMsg = error.message || 'خطای ناشناخته‌ای رخ داد.';
@@ -405,6 +438,58 @@ export default function AIChatPanel({ isOpen, onClose, bookmarks, categories }: 
             </div>
           </div>
         ))}
+
+        {/* Preset Suggested Action Button for Auto-Organizing */}
+        {messages.length <= 1 && !isLoading && (
+          <div className="my-2 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">دستورات پیشنهادی:</span>
+            <button
+              onClick={() => {
+                const promptText = "تمام نشانک‌های من را بر اساس موضوع و شباهت تحلیل کن و آن‌ها را در پوشه‌های مختلف در صفحه ai list دسته‌بندی کن.";
+                setInput(promptText);
+                setTimeout(() => {
+                  if (!userApiKey) {
+                    setMessages(prev => [...prev, { role: 'model', content: 'لطفاً ابتدا از بخش تنظیمات ⚙️ کلید API شخصی Gemini خود را وارد و ذخیره کنید.' }]);
+                    setShowSettings(true);
+                    return;
+                  }
+                  const currentHistory = messages.filter(m => !m.content.includes('خطایی رخ داد') && !m.content.includes('لطفاً ابتدا از بخش تنظیمات'));
+                  setMessages([...currentHistory, { role: 'user', content: promptText }]);
+                  setIsLoading(true);
+                  callGeminiApi(promptText, currentHistory)
+                    .then(reply => {
+                      setMessages(prev => [...prev, { role: 'model', content: reply }]);
+                      const jsonMatch = reply.match(/```json\s*([\s\S]*?)\s*```/);
+                      if (jsonMatch && jsonMatch[1]) {
+                        try {
+                          const parsed = JSON.parse(jsonMatch[1]);
+                          if (parsed.action === 'organize_ai_list' && parsed.categories && parsed.assignments) {
+                            onOrganizeBookmarks?.({
+                              categories: parsed.categories,
+                              assignments: parsed.assignments
+                            });
+                          }
+                        } catch (e) {
+                          console.error("Error parsing JSON action", e);
+                        }
+                      }
+                    })
+                    .catch(err => {
+                      setMessages(prev => [...prev, { role: 'model', content: `خطا: ${err.message || 'خطای ناشناخته'}` }]);
+                    })
+                    .finally(() => {
+                      setIsLoading(false);
+                      setInput('');
+                    });
+                }, 50);
+              }}
+              className="text-right p-3 rounded-xl bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 border border-[var(--color-primary)]/30 text-[var(--color-primary)] text-xs font-semibold flex items-center justify-between gap-2 transition-all cursor-pointer group shadow-sm"
+            >
+              <span>✨ مرتب‌سازی هوشمند همه نشانک‌ها در صفحه ai list</span>
+              <span className="text-[10px] bg-[var(--color-primary)] text-white px-2 py-0.5 rounded-full group-hover:scale-105 transition-transform">اجرا</span>
+            </button>
+          </div>
+        )}
         {isLoading && (
           <div className="flex items-start gap-2 max-w-[90%] self-start">
             <div className="shrink-0 w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center shadow-sm">

@@ -46,21 +46,22 @@ interface BookmarkGridProps {
   setActivePage: (id: string) => void;
   categories: CategoryItem[];
   bookmarks: Bookmark[];
-  onUpdateCategoryGradient: (id: string, gradient: string) => void;
-  onToggleFavorite: (id: string) => void;
-  onDeleteBookmark: (id: string) => void;
-  onEditBookmark: (bookmark: Bookmark) => void;
-  onUpdateBookmark?: (id: string, updates: Partial<Bookmark>) => void;
-  onTriggerAddModal: (pageId?: string) => void;
-  activeCategory: string;
-  setActiveCategory?: (id: string) => void;
+  onUpdateCategoryGradient?: (categoryId: string, gradient: string) => void;
+  onToggleFavorite?: (id: string) => void;
   onToggleReadLater?: (id: string) => void;
-  onOpenImport?: () => void;
-  onEditCategory?: (id: string, name: string) => void;
   onAddCategory?: (name?: string) => void;
-  onDropLink?: (url: string, categoryId: string, isInternalId?: boolean) => void;
+  onEditCategory?: (id: string, newName: string) => void;
+  onDropLink?: (url: string, categoryId: string) => void;
   onDropLinks?: (urls: string[], categoryId: string) => void;
   onDeleteCategory?: (id: string) => void;
+  onDeleteBookmark?: (id: string) => void;
+  onUpdateBookmark?: (id: string, updates: Partial<Bookmark>) => void;
+  onEditBookmark?: (bookmark: Bookmark) => void;
+  onTriggerAddModal?: (pageId?: string) => void;
+  onOpenImport?: () => void;
+  onOrganizeBookmarks?: (organizedData: { categories: string[]; assignments: Record<string, string[]> }) => void;
+  activeCategory?: string;
+  setActiveCategory?: (id: string) => void;
 }
 
 
@@ -132,15 +133,15 @@ export default function BookmarkGrid({
   onEditBookmark,
   onUpdateBookmark,
   onTriggerAddModal,
+  onOpenImport,
+  onOrganizeBookmarks,
   activeCategory,
-  setActiveCategory,
   onAddCategory,
   onDropLink,
   onDropLinks,
   onEditCategory,
   onDeleteCategory,
-  onToggleReadLater,
-  onOpenImport
+  onToggleReadLater
 }: BookmarkGridProps) {
       const { settings } = useSettings();
   const { getGlassStyle } = useGlassStyle();
@@ -449,7 +450,7 @@ export default function BookmarkGrid({
       />
       <WallpaperModal isOpen={isWallpaperOpen} onClose={() => setIsWallpaperOpen(false)} />
       <RightSidebar onOpenSettings={() => setIsSettingsOpen(true)} onOpenWallpaper={() => setIsWallpaperOpen(true)} onToggleWidgets={() => setIsEditDashboard(!isEditDashboard)} onOpenImport={onOpenImport} onToggleAIChat={() => setIsAIChatOpen(!isAIChatOpen)} />
-      <AIChatPanel isOpen={isAIChatOpen} onClose={() => setIsAIChatOpen(false)} bookmarks={bookmarks} categories={categories} />
+      <AIChatPanel isOpen={isAIChatOpen} onClose={() => setIsAIChatOpen(false)} bookmarks={bookmarks} categories={categories} onOrganizeBookmarks={onOrganizeBookmarks} />
       <WidgetsPanel isOpen={isEditDashboard} onClose={() => setIsEditDashboard(false)} visibility={widgetVisibility} setVisibility={setWidgetVisibility} />
 
       {/* Main Grid Scroll Area */}

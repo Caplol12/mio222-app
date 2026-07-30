@@ -146,6 +146,64 @@ export default function App() {
 
   const currentThemeMode = folderThemes["global"] || folderThemes["all"] || "ios-dark";
 
+  // Handle AI Auto Organize Action
+  const handleOrganizeBookmarksAI = useCallback(({ categories: newCatNames, assignments }: { categories: string[]; assignments: Record<string, string[]> }) => {
+    // 1. Ensure 'ai list' page exists or create it
+    let aiPageId = pages.find(p => p.name.toLowerCase() === 'ai list')?.id;
+    if (!aiPageId) {
+      aiPageId = 'page-ai-list-' + Date.now();
+      const updatedPages = [...pages, { id: aiPageId, name: 'ai list' }];
+      setPages(updatedPages);
+      localStorage.setItem('stash_pages', JSON.stringify(updatedPages));
+    }
+    setActivePage(aiPageId);
+
+    // 2. Create Categories for AI groups if they don't exist
+    const updatedCategories = [...categories];
+    const categoryNameToId: Record<string, string> = {};
+
+    newCatNames.forEach((catName, index) => {
+      let existingCat = updatedCategories.find(c => c.name.trim() === catName.trim());
+      if (!existingCat) {
+        existingCat = {
+          id: 'cat-ai-' + Date.now() + '-' + index,
+          name: catName.trim(),
+          icon: 'folder'
+        };
+        updatedCategories.push(existingCat);
+      }
+      categoryNameToId[catName.trim()] = existingCat.id;
+    });
+
+    setCategories(updatedCategories);
+    localStorage.setItem('stash_categories', JSON.stringify(updatedCategories));
+
+    // 3. Assign Bookmarks to their corresponding AI Categories and AI Page
+    setBookmarks(prevBookmarks => {
+      const updatedBookmarks = prevBookmarks.map(bm => {
+        // Find which Category AI assigned this bookmark to
+        let targetCategoryName: string | undefined;
+        for (const [catName, bmIds] of Object.entries(assignments)) {
+          if (Array.isArray(bmIds) && bmIds.includes(bm.id)) {
+            targetCategoryName = catName;
+            break;
+          }
+        }
+
+        if (targetCategoryName && categoryNameToId[targetCategoryName]) {
+          return {
+            ...bm,
+            categoryId: categoryNameToId[targetCategoryName],
+            pageId: aiPageId
+          };
+        }
+        return bm;
+      });
+
+      localStorage.setItem('stash_bookmarks', JSON.stringify(updatedBookmarks));
+      return updatedBookmarks;
+    });
+  }, [pages, categories, setPages, setActivePage, setCategories, setBookmarks]);
   const handleExportData = useCallback(() => {
     const data = {
       bookmarks,
@@ -628,6 +686,7 @@ export default function App() {
               setIsModalOpen(true);
             }}
             onOpenImport={() => setIsImportModalOpen(true)}
+            onOrganizeBookmarks={handleOrganizeBookmarksAI}
             activeCategory={activeCategory}
             setActiveCategory={setActiveCategory}
           />
