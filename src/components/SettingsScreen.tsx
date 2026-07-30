@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, User, LogOut, Copy, UserPlus, Crown, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, User, LogOut, Copy, UserPlus, Crown, Loader2, CheckCircle2, Sparkles, CreditCard, Send, ExternalLink } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAuth, User as UserType } from '../contexts/AuthContext';
 
@@ -12,6 +12,10 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ onClose, categories, pages = [] }: SettingsScreenProps) {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { user, login, logout } = useAuth();
+
+  // Premium purchase options state
+  const [showPurchaseOptions, setShowPurchaseOptions] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'gateway' | 'direct' | null>(null);
 
   // Registration state inside Settings
   const [showRegisterForm, setShowRegisterForm] = useState(false);
@@ -207,6 +211,112 @@ export default function SettingsScreen({ onClose, categories, pages = [] }: Sett
               </div>
             </section>
           )}
+
+          {/* ACCESS / Premium Subscription Section */}
+          <section className="space-y-3" dir="rtl">
+            <SectionTitle>ACCESS</SectionTitle>
+            <div className="bg-slate-200/70 rounded-2xl p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className={`text-[11px] font-bold px-3 py-1 rounded-full border ${
+                  user?.isPremium 
+                    ? 'bg-amber-500/15 text-amber-700 border-amber-500/30' 
+                    : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                }`}>
+                  {user?.isPremium ? 'اشتراک فعال پرمیوم 👑' : 'Free plan'}
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                دسترسی نامحدود به تمامی مدل‌های پیشرفته هوش مصنوعی (NVIDIA, DeepSeek, GLM) و کلیه امکانات پرمیوم.
+              </p>
+
+              {/* Lifetime Purchase Button */}
+              {!showPurchaseOptions ? (
+                <button 
+                  onClick={() => {
+                    setShowPurchaseOptions(true);
+                    setSelectedPaymentMethod(null);
+                  }}
+                  className="w-full py-3.5 px-4 bg-[#1E1F24] hover:bg-[#2A2B32] text-white font-bold text-sm rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <span>Lifetime · ۹۸ هزار تومان</span>
+                </button>
+              ) : (
+                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-300">
+                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      انتخاب روش پرداخت (Lifetime · ۹۸ هزار تومان)
+                    </span>
+                    <button 
+                      onClick={() => {
+                        setShowPurchaseOptions(false);
+                        setSelectedPaymentMethod(null);
+                      }}
+                      className="text-[11px] text-slate-500 hover:text-slate-700 font-bold"
+                    >
+                      انصراف
+                    </button>
+                  </div>
+
+                  {/* Two Options */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Option 2: Payment Gateway */}
+                    <button
+                      onClick={() => {
+                        setSelectedPaymentMethod('gateway');
+                        window.open('https://reymit.ir/englishaparat', '_blank');
+                      }}
+                      className="flex flex-col items-center justify-center p-3 rounded-xl bg-white border border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 text-slate-800 transition-all gap-1.5 shadow-sm group cursor-pointer"
+                    >
+                      <CreditCard className="w-5 h-5 text-blue-600 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-bold">درگاه پرداخت</span>
+                      <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
+                        انتقال مستقیم <ExternalLink className="w-2.5 h-2.5" />
+                      </span>
+                    </button>
+
+                    {/* Option 1: Direct Payment */}
+                    <button
+                      onClick={() => setSelectedPaymentMethod('direct')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all gap-1.5 shadow-sm group cursor-pointer ${
+                        selectedPaymentMethod === 'direct'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white border-slate-300 hover:border-blue-500 hover:bg-blue-50/50 text-slate-800'
+                      }`}
+                    >
+                      <Send className={`w-5 h-5 ${selectedPaymentMethod === 'direct' ? 'text-white' : 'text-blue-600'} group-hover:scale-110 transition-transform`} />
+                      <span className="text-xs font-bold">پرداخت مستقیم</span>
+                      <span className={`text-[10px] ${selectedPaymentMethod === 'direct' ? 'text-blue-100' : 'text-slate-500'}`}>
+                        ارسال پیام تلگرام
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Message for Direct Payment */}
+                  {selectedPaymentMethod === 'direct' && (
+                    <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1">
+                      <p className="text-xs text-slate-800 leading-relaxed font-medium text-right">
+                        برای پرداخت هزینه پرمیوم به این ایدی در تلگرام پیام بدید (<a href="https://t.me/metarwa" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline font-mono" dir="ltr">@metarwa</a>) تا اطلاعات کامل براتون ارسال شود
+                      </p>
+                      <div className="flex justify-end pt-1 border-t border-blue-200/60">
+                        <a 
+                          href="https://t.me/metarwa" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          ارسال پیام در تلگرام (@metarwa)
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
 
           {/* Appearance Section */}
           <section className="space-y-4">
