@@ -582,7 +582,7 @@ export default function DraggableDashboard({
                     }
                   }} />
                   <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span className={`truncate w-full font-medium text-slate-800 dark:text-slate-200 ${Object.keys(columns).length <= 4 ? 'text-[9px] min-[400px]:text-[10px] sm:text-[12px] md:text-[13px]' : 'text-[13px]'}`}>{bm.domain || bm.title}</span>
+                    <span className={`truncate w-full font-medium text-slate-800 dark:text-slate-200 ${Object.keys(columns).length <= 4 ? 'text-[9px] min-[400px]:text-[10px] sm:text-[12px] md:text-[13px]' : 'text-[13px]'}`}>{bm.title || bm.domain}</span>
                     {settings?.showDesc && bm.description && <span className={`truncate w-full text-slate-400 dark:text-slate-500 mt-0.5 ${Object.keys(columns).length <= 4 ? 'text-[8px] sm:text-[9px] md:text-[10px]' : 'text-[10px]'}`}>{bm.description}</span>}
                   </div>
                 </button>
@@ -674,7 +674,15 @@ export default function DraggableDashboard({
                         </button>
                         <button 
                           onClick={() => {
-                            onUpdateBookmark?.(bm.id, { url: editUrl, title: editTitle, description: editDesc });
+                            let domain = bm.domain;
+                            if (editUrl) {
+                              try {
+                                let cleanUrl = editUrl.trim();
+                                if (!/^https?:\/\//i.test(cleanUrl)) cleanUrl = "https://" + cleanUrl;
+                                domain = new URL(cleanUrl).hostname || bm.domain;
+                              } catch (e) {}
+                            }
+                            onUpdateBookmark?.(bm.id, { url: editUrl, title: editTitle, description: editDesc, domain });
                             setInlineEditId(null);
                           }}
                           className="flex-1 py-1.5 bg-[#2A93D5] hover:brightness-110 text-white rounded-lg text-[13px] font-semibold transition-colors"

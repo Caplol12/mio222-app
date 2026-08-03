@@ -81,8 +81,8 @@ export default function App() {
         const parsed: Bookmark[] = JSON.parse(savedBookmarks);
         const map = new Map<string, Bookmark>();
         for (let i = parsed.length - 1; i >= 0; i--) {
-          if (parsed[i] && parsed[i].url) {
-            map.set(parsed[i].url, parsed[i]);
+          if (parsed[i] && (parsed[i].id || parsed[i].url)) {
+            map.set(parsed[i].id || parsed[i].url, parsed[i]);
           }
         }
         const uniqueBookmarks = Array.from(map.values()).reverse();
@@ -684,7 +684,20 @@ export default function App() {
             onDeleteCategory={handleDeleteCategory}
             onDeleteBookmark={handleDeleteBookmark}
             onUpdateBookmark={(id, updates) => {
-              const updated = bookmarks.map(bm => bm.id === id ? { ...bm, ...updates } : bm);
+              const updated = bookmarks.map(bm => {
+                if (bm.id === id) {
+                  let domain = updates.domain || bm.domain;
+                  if (updates.url && !updates.domain) {
+                    try {
+                      let cleanUrl = updates.url.trim();
+                      if (!/^https?:\/\//i.test(cleanUrl)) cleanUrl = `https://${cleanUrl}`;
+                      domain = new URL(cleanUrl).hostname || bm.domain;
+                    } catch (e) {}
+                  }
+                  return { ...bm, ...updates, domain };
+                }
+                return bm;
+              });
               saveBookmarks(updated);
             }}
             onEditBookmark={handleTriggerEdit}
